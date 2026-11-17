@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {MASTER_KEY_BYTES} from './vault';
+
 /** Shortest auth secret we accept. 32 random bytes encode to 44 characters. */
 export const MIN_SECRET_LENGTH = 32;
 
@@ -20,8 +22,28 @@ export function isPlaceholderSecret(secret: string): boolean {
   return PLACEHOLDER_WORDS.some(word => lower.includes(word));
 }
 
+/** True when `value` is base64 for exactly 32 bytes, as AES-256 needs. */
+export function isValidMasterKey(value: string): boolean {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+    return false;
+  }
+  return Buffer.from(value, 'base64').length === MASTER_KEY_BYTES;
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.url({error: 'DATABASE_URL must be set to a Postgres URL.'}),
+  ENCRYPTION_KEY: z
+    .string({error: 'ENCRYPTION_KEY is missing.'})
+    // `abort` stops here, so a placeholder gets one clear message.
+    .refine(key => !isPlaceholderSecret(key), {
+      message: 'ENCRYPTION_KEY is still a placeholder.',
+      abort: true,
+    })
+    .refine(
+      isValidMasterKey,
+      'ENCRYPTION_KEY must be 32 random bytes, base64-encoded ' +
+        '(make one with: openssl rand -base64 32).',
+    ),
   BETTER_AUTH_SECRET: z
     .string({error: 'BETTER_AUTH_SECRET is missing.'})
     .min(

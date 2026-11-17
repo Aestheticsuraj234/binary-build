@@ -61,16 +61,23 @@ function setUpEnvFile(): Map<string, string> {
     }
   }
 
-  // Replace a placeholder secret with a random one.
-  const secret = current.get('BETTER_AUTH_SECRET') ?? '';
-  if (secret.length < 32 || secret.startsWith('replace-')) {
-    const newSecret = randomBytes(32).toString('base64url');
-    text = text.replace(
-      /^BETTER_AUTH_SECRET=.*$/m,
-      `BETTER_AUTH_SECRET=${newSecret}`,
-    );
-    current.set('BETTER_AUTH_SECRET', newSecret);
-    console.log('Generated a random BETTER_AUTH_SECRET');
+  // Replace placeholder secrets with random ones. Both are 32 random bytes:
+  // the auth secret signs sessions, the encryption key locks provider keys.
+  const secrets = [
+    {name: 'BETTER_AUTH_SECRET', encoding: 'base64url'},
+    {name: 'ENCRYPTION_KEY', encoding: 'base64'},
+  ] as const;
+  for (const {name, encoding} of secrets) {
+    const value = current.get(name) ?? '';
+    if (value.length < 32 || value.startsWith('replace-')) {
+      const newValue = randomBytes(32).toString(encoding);
+      text = text.replace(
+        new RegExp(`^${name}=.*$`, 'm'),
+        `${name}=${newValue}`,
+      );
+      current.set(name, newValue);
+      console.log(`Generated a random ${name}`);
+    }
   }
 
   writeFileSync(ENV_FILE, text);

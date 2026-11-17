@@ -25,6 +25,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip API calls, Next.js internals and static files.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Skip API calls (/api/...), Next.js internals and static files. The
+  // `(?:/|$)` matters: without it, a page like /api-keys would be skipped too.
+  matcher: ['/((?!api(?:/|$)|_next/static|_next/image|favicon.ico).*)'],
 };

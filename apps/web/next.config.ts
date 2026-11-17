@@ -12,12 +12,11 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  // Send auth requests to the API through this app. The browser then sees the
-  // session cookie as coming from the web app itself.
+  // Send API requests through this app. The browser then sees the session
+  // cookie as coming from the web app itself, and never talks to the API
+  // directly.
   rewrites() {
-    return [
-      {source: '/api/auth/:path*', destination: `${API_URL}/api/auth/:path*`},
-    ];
+    return [{source: '/api/:path*', destination: `${API_URL}/api/:path*`}];
   },
 };
 
