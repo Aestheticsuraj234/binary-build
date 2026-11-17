@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "drizzle": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": [
+        "--config.verify-deps-before-run=false",
+        "exec",
+        "drizzle-kit",
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}
