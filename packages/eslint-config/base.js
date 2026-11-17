@@ -63,6 +63,12 @@ export const baseConfig = [
           format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
         },
         {selector: 'function', format: ['camelCase', 'PascalCase']},
+        // PascalCase lets a component be passed in, as in `{icon: Icon}`.
+        {
+          selector: 'parameter',
+          format: ['camelCase', 'PascalCase'],
+          leadingUnderscore: 'allow',
+        },
         {selector: 'import', format: ['camelCase', 'PascalCase']},
         {selector: 'typeLike', format: ['PascalCase']},
         {selector: 'enumMember', format: ['UPPER_CASE']},

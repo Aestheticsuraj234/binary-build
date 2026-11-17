@@ -9,7 +9,7 @@ import * as schema from './schema';
 export * from './schema';
 export {schema};
 // Re-exported so other packages can write raw SQL without their own copy.
-export {sql} from 'drizzle-orm';
+export {and, eq, sql} from 'drizzle-orm';
 
 const MIGRATIONS_FOLDER = fileURLToPath(new URL('../drizzle', import.meta.url));
 

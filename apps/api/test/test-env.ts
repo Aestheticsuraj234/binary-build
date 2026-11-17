@@ -16,3 +16,6 @@ export const TEST_SECRET = 'test-secret-that-is-long-enough-0123456789';
 
 export const API_URL = 'http://localhost:3001';
 export const WEB_URL = 'http://localhost:3000';
+
+/** A fixed 32-byte master key for tests (base64). Never used for real data. */
+export const TEST_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');

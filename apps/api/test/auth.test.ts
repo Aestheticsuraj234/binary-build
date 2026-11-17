@@ -1,21 +1,11 @@
-import type {Database} from '@binary/db';
-import {createDb, sql, user} from '@binary/db';
+import {user} from '@binary/db';
 import {AUTH_MESSAGES} from '@binary/shared';
 import {afterAll, beforeEach, describe, expect, it} from 'vitest';
 
-import {createApp} from '../src/app';
-import {createAuth} from '../src/auth';
-import {API_URL, TEST_DATABASE_URL, TEST_SECRET, WEB_URL} from './test-env';
+import {cookieFrom, createTestApp, resetDatabase} from './helpers';
+import {API_URL, WEB_URL} from './test-env';
 
-const db: Database = createDb(TEST_DATABASE_URL);
-const app = createApp(
-  createAuth({
-    db,
-    secret: TEST_SECRET,
-    baseUrl: API_URL,
-    trustedOrigins: [WEB_URL, 'binary://', 'exp://'],
-  }),
-);
+const {app, db} = createTestApp();
 
 const ada = {
   name: 'Ada Lovelace',
@@ -51,14 +41,6 @@ function request(
   );
 }
 
-/** Turns a response's Set-Cookie headers into a Cookie header. */
-function cookieFrom(response: Response): string {
-  return response.headers
-    .getSetCookie()
-    .map(cookie => cookie.split(';')[0])
-    .join('; ');
-}
-
 async function signUp(body: object = ada): Promise<Response> {
   return request('/sign-up/email', {body});
 }
@@ -74,7 +56,7 @@ async function getSession(cookie: string) {
 
 beforeEach(async () => {
   // Start every test with no users. Sessions and accounts cascade.
-  await db.execute(sql`TRUNCATE TABLE "user", verification CASCADE`);
+  await resetDatabase(db);
 });
 
 afterAll(async () => {

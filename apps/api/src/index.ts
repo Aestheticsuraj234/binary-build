@@ -5,6 +5,7 @@ import {createApp} from './app';
 import {createAuth} from './auth';
 import type {Env} from './env';
 import {getTrustedOrigins, loadEnv} from './env';
+import {createVault} from './vault';
 
 function main(): void {
   let env: Env;
@@ -16,13 +17,15 @@ function main(): void {
   }
 
   const db = createDb(env.DATABASE_URL);
+  const trustedOrigins = getTrustedOrigins(env);
   const auth = createAuth({
     db,
     secret: env.BETTER_AUTH_SECRET,
     baseUrl: env.BETTER_AUTH_URL,
-    trustedOrigins: getTrustedOrigins(env),
+    trustedOrigins,
   });
-  const app = createApp(auth);
+  const vault = createVault(env.ENCRYPTION_KEY);
+  const app = createApp({auth, db, vault, trustedOrigins});
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.
   const server = serve(

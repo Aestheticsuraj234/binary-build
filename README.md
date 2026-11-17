@@ -4,18 +4,19 @@ An open-source personal AI assistant you run on your own machine: AI coworkers
 that chat with you, use your apps and do real work, always asking before
 anything risky.
 
-This is chapter 1: the foundation. A monorepo with an API, a web app and a
-mobile app, sharing one Postgres database and email-and-password sign-in. No AI
-yet.
+So far: a monorepo with an API, a web app and a mobile app, sharing one
+Postgres database and email-and-password sign-in (chapter 1), plus an AI engine
+that uses each person's own OpenAI, Anthropic or Google key, stored encrypted,
+with a Playground to try it (chapter 3).
 
 ## What's inside
 
 | Path                         | What it is                                                                 |
 | ---------------------------- | -------------------------------------------------------------------------- |
-| `apps/api`                   | Hono API on Node. Serves Better Auth at `/api/auth/*`.                     |
+| `apps/api`                   | Hono API on Node: Better Auth, the key vault, the AI engine and routes.    |
 | `apps/web`                   | Next.js web app with Tailwind and shadcn/ui.                               |
 | `apps/mobile`                | Expo app (Expo Router). Keeps the session in secure storage.               |
-| `packages/shared`            | Form validation (Zod) and design tokens, used by all three.                |
+| `packages/shared`            | Validation (Zod), provider list, API types and design tokens.              |
 | `packages/db`                | Drizzle schema, migrations and database client.                            |
 | `packages/eslint-config`     | Lint rules based on the Google TypeScript Style Guide.                     |
 | `packages/typescript-config` | Shared `tsconfig` settings.                                                |
@@ -32,11 +33,12 @@ yet.
 
 ```sh
 pnpm install
-pnpm run setup   # .env with a random secret, Postgres, migrations
+pnpm run setup   # .env with random secrets, Postgres, migrations
 pnpm dev         # Postgres + API (port 3001) + web (port 3000)
 ```
 
-Open http://localhost:3000 and create an account.
+Open http://localhost:3000, create an account, then add a key on the
+**API keys** page and try the **Playground**.
 
 > Use `pnpm run setup`, not `pnpm setup`. `pnpm setup` is a built-in pnpm
 > command that sets up pnpm itself, so it never reaches this project's script.
@@ -56,17 +58,17 @@ The phone talks to the API at your computer's Wi-Fi address, which
 
 ## Everyday commands
 
-| Command            | What it does                                  |
-| ------------------ | --------------------------------------------- |
-| `pnpm dev`         | Start Postgres, the API and the web app.      |
-| `pnpm mobile`      | Start the Expo dev server for the phone.      |
-| `pnpm lint`        | ESLint, then a Prettier formatting check.     |
-| `pnpm format`      | Fix formatting with Prettier.                 |
-| `pnpm check-types` | TypeScript in every package.                  |
-| `pnpm test`        | Unit tests, plus auth tests against Postgres. |
-| `pnpm build`       | Production build of the web app.              |
-| `pnpm db:migrate`  | Apply database migrations.                    |
-| `pnpm db:down`     | Stop Postgres (your data is kept).            |
+| Command            | What it does                                 |
+| ------------------ | -------------------------------------------- |
+| `pnpm dev`         | Start Postgres, the API and the web app.     |
+| `pnpm mobile`      | Start the Expo dev server for the phone.     |
+| `pnpm lint`        | ESLint, then a Prettier formatting check.    |
+| `pnpm format`      | Fix formatting with Prettier.                |
+| `pnpm check-types` | TypeScript in every package.                 |
+| `pnpm test`        | Unit tests, plus API tests against Postgres. |
+| `pnpm build`       | Production build of the web app.             |
+| `pnpm db:migrate`  | Apply database migrations.                   |
+| `pnpm db:down`     | Stop Postgres (your data is kept).           |
 
 ### Changing the database
 
@@ -79,13 +81,38 @@ The phone talks to the API at your computer's Wi-Fi address, which
 - The **API** runs Better Auth and stores users and sessions in Postgres. It
   refuses to start if `BETTER_AUTH_SECRET` is missing, shorter than 32
   characters, or still a placeholder.
-- The **web app** forwards `/api/auth/*` to the API, so the session cookie
+- The **web app** forwards `/api/*` to the API, so the session cookie
   belongs to the web app. `apps/web/proxy.ts` checks the session before each
   page: signed out goes to `/sign-in`, signed in skips the sign-in pages.
 - The **mobile app** calls the API directly and stores the session in the
   phone's secure storage (Keychain or Keystore).
 - **Validation** lives in `packages/shared`. Web, mobile and the API run the
   same Zod schemas, so the error messages are identical everywhere.
+
+## How the AI engine works
+
+```
+API keys page ──save──▶ /api/keys ──encrypt──▶ provider_keys (ciphertext only)
+Playground ──one request per provider──▶ /api/playground
+   └▶ engine factory: find key ▶ decrypt ▶ ApiEngine (Vercel AI SDK) ▶ provider
+```
+
+- **Key vault** (`apps/api/src/vault.ts`): AES-256-GCM with one master key,
+  `ENCRYPTION_KEY` in `.env`. Each key is tied to its owner and provider, so a
+  stored value copied onto another row won't decrypt. The API refuses to start
+  without a valid master key. **Back it up**: if it changes, saved keys can't
+  be read and people have to add them again.
+- A plain key never leaves the API. The database stores ciphertext plus the
+  last 4 characters, and the API only ever returns those 4 characters.
+- **Engine** (`apps/api/src/engine/`): one `Engine` interface (`stream()` an
+  answer), one implementation (`ApiEngine`, on the Vercel AI SDK), and a
+  factory that hands back a ready engine for a person and a model. Later
+  chapters add engines behind the same interface.
+- **Playground**: the web app sends one request per connected provider, and
+  each answer streams back as newline-delimited JSON (`start`, `text`, then
+  `done` or `error`).
+- Default models live in `packages/shared/src/providers.ts`.
+- Tests use the AI SDK's fake model (`MockLanguageModelV4`), never real keys.
 
 ## Code style
 

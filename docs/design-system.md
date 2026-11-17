@@ -38,8 +38,12 @@ so change both together.
   Create account). Secondary actions (Sign out, Cancel) use `surface` with a
   `borderStrong` outline.
 - Text on lime is always `onAccent` (near black). Never put white text on lime.
-- Small brand touches (the square in the logo, the focus ring) may also use
-  lime, because they are not competing actions.
+- Small brand touches (the "01" logo tile, the focus ring, the dot on a
+  saved key's badge, the lock icon) may also use lime, because they are not
+  competing actions.
+- On a page with several equal actions (one Save per provider), none of them
+  is the main action, so they all use the secondary style. The Playground's
+  Run button is the one lime button on that page.
 
 ### shadcn/ui names on the web
 
@@ -63,7 +67,7 @@ Use these steps, in pixels: `xs 4`, `sm 8`, `md 12`, `lg 16`, `xl 24`, `xxl 32`,
 
 - Inputs, buttons and alerts: `md` (10).
 - Cards and sheets: `lg` (16).
-- The logo square: 3 (half of `sm`).
+- The logo tile: `md` on web (the mobile logo is still the small square).
 
 ## Type
 
@@ -88,6 +92,31 @@ The web uses Geist; mobile uses the system font. Sizes in pixels:
 - **Error message** (for problems with the whole form, like a wrong
   password): `dangerSurface` background, `danger` border and text, radius `md`,
   above the form fields.
+
+- **Card**: `surface` background, `border` outline, radius `lg`, 24px
+  padding (web `p-6`). Used for each provider on the API keys page and each
+  answer column in the Playground.
+- **Badge**: a small pill (`full` radius) with a `borderStrong` outline and
+  `textMuted` label, for statuses like "Not added". A saved key's badge adds a
+  small lime dot.
+- **Skeleton**: a pulsing `surfaceRaised` block, the same size as what's
+  loading.
+
+## App shell (web)
+
+Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
+
+- **Top bar**, 64px tall, with a `border` line under it. On the left: the logo
+  (a lime "01" tile and "Binary") and the main links (icon and label; icon
+  only on small screens). The current page's link gets a `surfaceRaised`
+  background. On the right: initials in a circle, the email (hidden on small
+  screens) and a ghost "Sign out" button.
+- **Page header**: title at 36px semibold, then one line of `textMuted`
+  description.
+- **Width**: `max-w-3xl` for forms and lists, `max-w-6xl` for side-by-side
+  layouts like the Playground. Use the `Page` component, which handles both.
+- To add a section, add a folder under `app/(app)/` and a link in
+  `components/nav-links.tsx`.
 
 ## Accessibility
 

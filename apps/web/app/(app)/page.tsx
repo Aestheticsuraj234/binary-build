@@ -1,10 +1,12 @@
+import type {LucideIcon} from 'lucide-react';
+import {ArrowRightIcon, FlaskConicalIcon, KeyRoundIcon} from 'lucide-react';
 import {headers} from 'next/headers';
+import Link from 'next/link';
 import {redirect} from 'next/navigation';
 import {Suspense} from 'react';
 
-import {Logo} from '@/components/logo';
-import {SignOutButton} from '@/components/sign-out-button';
-import {Spinner} from '@/components/ui/spinner';
+import {Page} from '@/components/page';
+import {Skeleton} from '@/components/ui/skeleton';
 import {getSessionUser} from '@/lib/session';
 
 /** Greets the signed-in person. Reads the session, so it streams in. */
@@ -15,31 +17,62 @@ async function Greeting() {
     // expired between the two checks.
     redirect('/sign-in');
   }
-
-  return (
-    <>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Hi, {user.name.split(' ')[0]}
-      </h1>
-      <p className="mt-2 text-muted-foreground">
-        You&apos;re signed in as {user.email}. Your AI coworkers will live here.
-      </p>
-    </>
-  );
+  return <>Hi, {user.name.split(' ')[0]}</>;
 }
+
+interface Shortcut {
+  href: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+const SHORTCUTS: Shortcut[] = [
+  {
+    href: '/keys',
+    title: 'Add your API keys',
+    description:
+      'Connect OpenAI, Anthropic or Google Gemini with your own key.',
+    icon: KeyRoundIcon,
+  },
+  {
+    href: '/playground',
+    title: 'Try the Playground',
+    description: 'Ask every connected model the same thing, side by side.',
+    icon: FlaskConicalIcon,
+  },
+];
 
 export default function HomePage() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4">
-      <header className="flex items-center justify-between py-6">
-        <Logo />
-        <SignOutButton />
-      </header>
-      <main className="flex flex-1 flex-col justify-center pb-24">
-        <Suspense fallback={<Spinner className="size-5" />}>
+    <Page
+      title="Home"
+      description="Your AI coworkers will live here. For now, connect a model and try it out."
+    >
+      <h2 className="mb-6 text-xl font-semibold">
+        <Suspense fallback={<Skeleton className="h-7 w-32" />}>
           <Greeting />
         </Suspense>
-      </main>
-    </div>
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {SHORTCUTS.map(({href, title, description, icon: Icon}) => (
+          <Link
+            key={href}
+            href={href}
+            className="group rounded-lg border bg-card p-5 transition-colors hover:border-input"
+          >
+            <Icon aria-hidden className="mb-4 size-5 text-primary" />
+            <p className="flex items-center gap-2 font-medium">
+              {title}
+              <ArrowRightIcon
+                aria-hidden
+                className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+              />
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </Link>
+        ))}
+      </div>
+    </Page>
   );
 }
