@@ -1,66 +1,199 @@
-import {colors, fontSize, fontWeight, spacing} from '@binary/shared';
-import {useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import type {
+  AgentSummary,
+  AgentTemplateSummary,
+  ProviderKeyStatus,
+} from '@binary/shared';
+import {colors, fontSize, fontWeight, radius, spacing} from '@binary/shared';
+import {useRouter} from 'expo-router';
+import type {ReactNode} from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-import {Button} from '@/components/button';
+import {AgentCard, DesignYourOwnCard, TemplateCard} from '@/components/cards';
+import {CharacterFace} from '@/components/character-face';
 import {Logo} from '@/components/logo';
+import {NeedsKey} from '@/components/needs-key';
+import {useApi} from '@/hooks/use-api';
 import {authClient} from '@/lib/auth-client';
 
-/** Home screen for a signed-in person. */
-export default function HomeScreen() {
-  const {data: session} = authClient.useSession();
-  const [isSigningOut, setIsSigningOut] = useState(false);
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
+        {title}
+      </Text>
+      <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+      <View style={styles.list}>{children}</View>
+    </View>
+  );
+}
 
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    // Clears the session from secure storage. The root layout then shows
-    // the sign-in screen.
-    await authClient.signOut();
-    setIsSigningOut(false);
+/** Discover: your crew and the cast. The home screen once signed in. */
+export default function DiscoverScreen() {
+  const router = useRouter();
+  const {data: session} = authClient.useSession();
+  const agents = useApi<{agents: AgentSummary[]}>('/api/agents');
+  const templates = useApi<{templates: AgentTemplateSummary[]}>(
+    '/api/agent-templates',
+  );
+  const keys = useApi<{keys: ProviderKeyStatus[]}>('/api/keys');
+
+  const firstName = session?.user.name.split(' ')[0] ?? 'there';
+  const hasKey = keys.data?.keys.some(key => key.connected) ?? true;
+  const error = agents.error ?? templates.error ?? keys.error;
+  const isLoading = !agents.data || !templates.data;
+
+  async function refresh() {
+    await Promise.all([agents.reload(), templates.reload(), keys.reload()]);
   }
 
-  const firstName = session?.user.name.split(' ')[0] ?? '';
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+      <View style={styles.topBar}>
         <Logo />
+        <View style={styles.topActions}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/keys')}
+            style={styles.topButton}
+          >
+            <Text style={styles.topButtonText}>API keys</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void authClient.signOut()}
+            style={styles.topButton}
+          >
+            <Text style={styles.topButtonText}>Sign out</Text>
+          </Pressable>
+        </View>
       </View>
-      <View style={styles.body}>
-        <Text style={styles.title}>Hi, {firstName}</Text>
-        <Text style={styles.subtitle}>
-          You&apos;re signed in as {session?.user.email}. Your AI coworkers will
-          live here.
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => void refresh()}
+            tintColor={colors.accent}
+          />
+        }
+      >
+        <View style={styles.hero}>
+          <View style={styles.heroText}>
+            <Text style={styles.greeting}>Hi {firstName}</Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              Who are we working with today?
+            </Text>
+          </View>
+          <CharacterFace character="nova" size={88} />
+        </View>
+        <Text style={styles.intro}>
+          Every character has a job, a personality and a model to think with.
+          Hire one and give it something to do.
         </Text>
-      </View>
-      <Button
-        label="Sign out"
-        variant="secondary"
-        onPress={handleSignOut}
-        isLoading={isSigningOut}
-      />
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        {!hasKey && (
+          <View style={styles.block}>
+            <NeedsKey message="Your agents think with your own OpenAI, Anthropic or Google Gemini key. Add one to start hiring." />
+          </View>
+        )}
+
+        {isLoading && !error ? (
+          <ActivityIndicator color={colors.accent} style={styles.block} />
+        ) : (
+          <>
+            {agents.data && agents.data.agents.length > 0 && (
+              <Section title="Your crew" subtitle="Pick someone to talk to.">
+                {agents.data.agents.map(agent => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
+              </Section>
+            )}
+            <Section
+              title="Meet the cast"
+              subtitle="Ready-made roles. Change anything before you hire them."
+            >
+              {templates.data?.templates.map(template => (
+                <TemplateCard key={template.id} template={template} />
+              ))}
+              <DesignYourOwnCard />
+            </Section>
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.xl,
+  safeArea: {flex: 1, backgroundColor: colors.background},
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  header: {paddingVertical: spacing.sm},
-  body: {flex: 1, justifyContent: 'center'},
+  topActions: {flexDirection: 'row', gap: spacing.xs},
+  topButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  topButtonText: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  content: {padding: spacing.xl, paddingBottom: spacing.xxxl},
+  hero: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+  heroText: {flex: 1},
+  greeting: {color: colors.textMuted, fontSize: fontSize.sm},
   title: {
     color: colors.text,
     fontSize: fontSize.xl,
     fontWeight: fontWeight.semibold,
+    marginTop: spacing.xs,
   },
-  subtitle: {
+  intro: {
     color: colors.textMuted,
     fontSize: fontSize.md,
     lineHeight: 24,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
+  error: {color: colors.danger, marginTop: spacing.lg},
+  block: {marginTop: spacing.xl},
+  section: {marginTop: spacing.xxl},
+  sectionTitle: {
+    color: colors.text,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+  },
+  sectionSubtitle: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
+  },
+  list: {gap: spacing.md, marginTop: spacing.lg},
 });

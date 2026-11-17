@@ -1,11 +1,13 @@
 import {colors, fontSize, fontWeight, radius, spacing} from '@binary/shared';
 import {StyleSheet, Text, View} from 'react-native';
 
-/** The Binary wordmark: a lime square and the product name. */
+/** The Binary wordmark: a lime "01" tile and the product name. */
 export function Logo() {
   return (
     <View style={styles.row}>
-      <View style={styles.mark} />
+      <View style={styles.tile}>
+        <Text style={styles.tileText}>01</Text>
+      </View>
       <Text style={styles.name}>Binary</Text>
     </View>
   );
@@ -13,11 +15,19 @@ export function Logo() {
 
 const styles = StyleSheet.create({
   row: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-  mark: {
-    width: 12,
-    height: 12,
-    borderRadius: radius.sm / 2,
+  tile: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileText: {
+    color: colors.onAccent,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    fontFamily: 'Menlo',
   },
   name: {
     color: colors.text,

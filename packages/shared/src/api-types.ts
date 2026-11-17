@@ -30,3 +30,30 @@ export const API_ERROR_CODES = {
   noKey: 'NO_KEY',
   notFound: 'NOT_FOUND',
 } as const;
+
+/**
+ * An agent as the apps see it: only the fields they need. The owner and
+ * timestamps stay on the server.
+ */
+export interface AgentSummary {
+  id: string;
+  name: string;
+  /** The character that plays this agent (a `CharacterId`). */
+  avatar: string;
+  role: string;
+  instructions: string;
+  provider: ProviderId | null;
+  model: string | null;
+  templateId: string | null;
+}
+
+/** A ready-made starting point for a new agent. */
+export interface AgentTemplateSummary {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  instructions: string;
+  /** The character who plays this template (a `CharacterId`). */
+  character: string;
+}

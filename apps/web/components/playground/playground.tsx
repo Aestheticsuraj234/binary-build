@@ -1,7 +1,12 @@
 'use client';
 
 import type {ProviderId, ProviderKeyStatus} from '@binary/shared';
-import {getProvider, PROMPT_MAX_LENGTH, ENGINE_MESSAGES} from '@binary/shared';
+import {
+  ENGINE_MESSAGES,
+  getProvider,
+  PROMPT_MAX_LENGTH,
+  readEvents,
+} from '@binary/shared';
 import {ArrowRightIcon, CircleAlertIcon, SquareIcon} from 'lucide-react';
 import Link from 'next/link';
 import type {FormEvent, KeyboardEvent} from 'react';
@@ -10,7 +15,6 @@ import {useRef, useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {Spinner} from '@/components/ui/spinner';
 import {Textarea} from '@/components/ui/textarea';
-import {readEvents} from '@/lib/read-events';
 
 /** What one provider's column is showing. */
 interface Answer {
@@ -189,7 +193,7 @@ export function Playground({keys}: PlaygroundProps) {
         </div>
       </form>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {keys.map(key => (
           <AnswerColumn
             key={key.provider}

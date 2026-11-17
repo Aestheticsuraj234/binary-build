@@ -5,6 +5,15 @@ import {ActivityIndicator, StyleSheet, View} from 'react-native';
 
 import {authClient} from '@/lib/auth-client';
 
+/** Header settings for every screen below the home screen. */
+const INNER_SCREEN = {
+  headerShown: true,
+  headerStyle: {backgroundColor: colors.background},
+  headerTintColor: colors.text,
+  headerShadowVisible: false,
+  headerBackButtonDisplayMode: 'minimal',
+} as const;
+
 /**
  * Root of the app. Reads the saved session, then shows either the signed-in
  * screens or the sign-in screens. When the session changes (sign in, sign
@@ -33,6 +42,20 @@ export default function RootLayout() {
       >
         <Stack.Protected guard={isSignedIn}>
           <Stack.Screen name="index" />
+          {/* Inner screens get a dark header with a back button. */}
+          <Stack.Screen
+            name="keys"
+            options={{...INNER_SCREEN, title: 'API keys'}}
+          />
+          <Stack.Screen
+            name="agents/new"
+            options={{...INNER_SCREEN, title: 'Hire a character'}}
+          />
+          <Stack.Screen name="agents/[id]/index" options={INNER_SCREEN} />
+          <Stack.Screen
+            name="agents/[id]/edit"
+            options={{...INNER_SCREEN, title: 'Edit'}}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!isSignedIn}>
           <Stack.Screen name="sign-in" />

@@ -4,9 +4,13 @@ import {ActivityIndicator, Pressable, StyleSheet, Text} from 'react-native';
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  /** `primary` is the lime main action. Use it once per screen. */
-  variant?: 'primary' | 'secondary';
+  /**
+   * `primary` is the lime main action: use it once per screen.
+   * `danger` is for things that can't be undone, like firing an agent.
+   */
+  variant?: 'primary' | 'secondary' | 'danger';
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 /** A full-width button that shows a spinner while busy. */
@@ -15,27 +19,35 @@ export function Button({
   onPress,
   variant = 'primary',
   isLoading = false,
+  disabled = false,
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
+  const isDisabled = disabled || isLoading;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{disabled: isLoading, busy: isLoading}}
-      disabled={isLoading}
+      accessibilityLabel={label}
+      accessibilityState={{disabled: isDisabled, busy: isLoading}}
+      disabled={isDisabled}
       onPress={onPress}
       style={({pressed}) => [
         styles.base,
-        isPrimary ? styles.primary : styles.secondary,
-        pressed &&
-          (isPrimary ? styles.primaryPressed : styles.secondaryPressed),
-        isLoading && styles.loading,
+        styles[variant],
+        pressed && (isPrimary ? styles.primaryPressed : styles.otherPressed),
+        isDisabled && styles.disabled,
       ]}
     >
       {isLoading ? (
         <ActivityIndicator color={isPrimary ? colors.onAccent : colors.text} />
       ) : (
-        <Text style={[styles.label, isPrimary && styles.primaryLabel]}>
+        <Text
+          style={[
+            styles.label,
+            isPrimary && styles.primaryLabel,
+            variant === 'danger' && styles.dangerLabel,
+          ]}
+        >
           {label}
         </Text>
       )}
@@ -58,12 +70,18 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
   },
-  secondaryPressed: {backgroundColor: colors.surfaceRaised},
-  loading: {opacity: 0.8},
+  danger: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSurface,
+  },
+  otherPressed: {backgroundColor: colors.surfaceRaised},
+  disabled: {opacity: 0.5},
   label: {
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
   },
   primaryLabel: {color: colors.onAccent},
+  dangerLabel: {color: colors.danger},
 });

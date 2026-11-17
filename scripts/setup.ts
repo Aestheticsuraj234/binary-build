@@ -1,10 +1,11 @@
 /**
  * One-time setup: `pnpm run setup`.
  *
- * 1. Creates .env from .env.example and fills in a random auth secret.
+ * 1. Creates .env from .env.example and fills in random secrets.
  * 2. Points the mobile app at this computer's Wi-Fi address.
  * 3. Starts Postgres in Docker.
  * 4. Creates the test database and runs migrations on both databases.
+ * 5. Seeds agent templates and a demo account (demo@binary.dev).
  *
  * Safe to run again: it keeps values you have already set.
  */
@@ -141,6 +142,9 @@ function main(): void {
   run('pnpm', ['--filter', '@binary/db', 'db:migrate'], {
     DATABASE_URL: env.get('TEST_DATABASE_URL'),
   });
+
+  console.log('\nAdding agent templates and the demo account…');
+  run('pnpm', ['db:seed']);
 
   console.log(
     '\nSetup complete. Next: `pnpm dev`, and `pnpm mobile` for the phone.',

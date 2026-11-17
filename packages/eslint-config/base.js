@@ -61,6 +61,8 @@ export const baseConfig = [
         {
           selector: 'variable',
           format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+          // `_name` marks a value that is deliberately unused.
+          leadingUnderscore: 'allow',
         },
         {selector: 'function', format: ['camelCase', 'PascalCase']},
         // PascalCase lets a component be passed in, as in `{icon: Icon}`.

@@ -7,6 +7,8 @@ import type {ModelBuilder} from './engine/factory';
 import {createEngineFactory} from './engine/factory';
 import type {SignedInEnv} from './middleware/require-user';
 import {requireUser} from './middleware/require-user';
+import {agentTemplatesRoutes} from './routes/agent-templates';
+import {agentsRoutes} from './routes/agents';
 import {keysRoutes} from './routes/keys';
 import {playgroundRoutes} from './routes/playground';
 import type {Vault} from './vault';
@@ -45,11 +47,11 @@ export function createApp({
   const signedIn = new Hono<SignedInEnv>();
   signedIn.use(csrf({origin: trustedOrigins}));
   signedIn.use(requireUser(auth));
+  const engineFor = createEngineFactory({db, vault, buildModel});
   signedIn.route('/keys', keysRoutes({db, vault}));
-  signedIn.route(
-    '/playground',
-    playgroundRoutes(createEngineFactory({db, vault, buildModel})),
-  );
+  signedIn.route('/playground', playgroundRoutes(engineFor));
+  signedIn.route('/agents', agentsRoutes({db, engineFor}));
+  signedIn.route('/agent-templates', agentTemplatesRoutes(db));
   app.route('/api', signedIn);
 
   return app;

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
-    "auth:schema": "auth generate --config src/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes"
+    "auth:schema": "auth generate --config src/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.105",

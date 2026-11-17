@@ -106,17 +106,36 @@ The web uses Geist; mobile uses the system font. Sizes in pixels:
 
 Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 
-- **Top bar**, 64px tall, with a `border` line under it. On the left: the logo
-  (a lime "01" tile and "Binary") and the main links (icon and label; icon
-  only on small screens). The current page's link gets a `surfaceRaised`
-  background. On the right: initials in a circle, the email (hidden on small
-  screens) and a ghost "Sign out" button.
-- **Page header**: title at 36px semibold, then one line of `textMuted`
-  description.
-- **Width**: `max-w-3xl` for forms and lists, `max-w-6xl` for side-by-side
-  layouts like the Playground. Use the `Page` component, which handles both.
+- **Sidebar** (17rem, `border` on the right) on screens 768px and wider. Top
+  to bottom: the logo (a lime "01" tile and "Binary"), a dashed **Hire a
+  character** button, the main links (Discover, Playground, API keys; the
+  current one gets a `surfaceRaised` background), **Your crew** (each agent's
+  face, name and job), and the user card (initials, name, email, sign out).
+- **Phones** get a 56px top bar with the logo and a menu button. The menu
+  slides the same sidebar in from the left.
+- **Width**: `max-w-3xl` for forms and lists, `max-w-6xl` for grids like
+  Discover and the Playground.
 - To add a section, add a folder under `app/(app)/` and a link in
   `components/nav-links.tsx`.
+
+## Characters
+
+- The cast lives in `packages/shared/src/characters.ts`: name, personality,
+  greeting, body `color` and a dark `tint`. Draw a character's panel
+  (cards, the stage, the creator preview) on its `tint`.
+- **Moods**: `idle` (floats and blinks), `thinking` (sways, thought dots),
+  `talking` (mouth moves), `happy` (bounces). In a conversation: thinking
+  while waiting, talking while the answer streams, happy when it's done,
+  then back to idle.
+- Small, repeated faces (lists, the character grid, chat messages) are not
+  animated. Only one face on screen should move at a time.
+- Reduced motion turns every character animation off.
+
+## Phone app
+
+The Expo app uses the same tokens from `@binary/shared`. Inner screens get a
+dark native header with a back button; buttons are 48px tall; choices like
+provider and model are pill buttons rather than drop-downs.
 
 ## Accessibility
 

@@ -1,4 +1,4 @@
-import type {PlaygroundEvent} from '@binary/shared';
+import type {PlaygroundEvent} from './api-types';
 
 /**
  * Reads a newline-delimited JSON stream from the API one event at a time,

@@ -1,8 +1,11 @@
-import type {ProviderId} from '@binary/shared';
+import type {ChatTurn, ProviderId} from '@binary/shared';
 
 /** What to ask a model. */
 export interface EngineRequest {
+  /** The newest message from the person. */
   prompt: string;
+  /** Earlier turns of the conversation, oldest first. */
+  history?: ChatTurn[];
   /** Optional instructions that shape every answer. */
   system?: string;
   /** Stops the request, for example when the person leaves the page. */

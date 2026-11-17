@@ -8,6 +8,7 @@ import * as schema from './schema';
 
 export * from './schema';
 export {schema};
+export * from './repositories';
 // Re-exported so other packages can write raw SQL without their own copy.
 export {and, eq, sql} from 'drizzle-orm';
 

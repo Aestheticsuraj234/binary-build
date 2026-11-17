@@ -7,7 +7,8 @@ anything risky.
 So far: a monorepo with an API, a web app and a mobile app, sharing one
 Postgres database and email-and-password sign-in (chapter 1), plus an AI engine
 that uses each person's own OpenAI, Anthropic or Google key, stored encrypted,
-with a Playground to try it (chapter 3).
+with a Playground to try it (chapter 3), and agents you hire, each played by
+a cartoon character, on the web and the phone (chapter 4).
 
 ## What's inside
 
@@ -37,8 +38,9 @@ pnpm run setup   # .env with random secrets, Postgres, migrations
 pnpm dev         # Postgres + API (port 3001) + web (port 3000)
 ```
 
-Open http://localhost:3000, create an account, then add a key on the
-**API keys** page and try the **Playground**.
+Open http://localhost:3000 and sign in as **demo@binary.dev /
+binary-demo-password** (or create an account). Add a key on **API keys**, then
+hire someone from **Discover** and give them a task.
 
 > Use `pnpm run setup`, not `pnpm setup`. `pnpm setup` is a built-in pnpm
 > command that sets up pnpm itself, so it never reaches this project's script.
@@ -113,6 +115,23 @@ Playground ──one request per provider──▶ /api/playground
   `done` or `error`).
 - Default models live in `packages/shared/src/providers.ts`.
 - Tests use the AI SDK's fake model (`MockLanguageModelV4`), never real keys.
+
+## How agents work
+
+- An **agent** has a name, a job, instructions, a provider and a model, and is
+  played by a **character** from the cast in `packages/shared/src/characters.ts`
+  (Nova, Bolt, Mimi, Sunny, Ember, Moss, Pebble, Juno).
+- Each character is drawn once, as plain shapes. The web app turns them into
+  SVG animated with CSS, and the phone app into `react-native-svg` animated
+  with React Native's `Animated`. Both hold still for reduced motion.
+- **Templates** (seeded by `pnpm db:seed`) are copied into a new agent, so
+  editing an agent never changes its template.
+- Every reply rebuilds the **system prompt** from the agent's job,
+  instructions and its character's personality
+  (`apps/api/src/agents/system-prompt.ts`), so edits apply to the next answer.
+- Every query is scoped to the signed-in person. Someone else's agent gets
+  the same 404 as one that doesn't exist.
+- Chats aren't saved yet: **New chat** or a reload starts over.
 
 ## Code style
 

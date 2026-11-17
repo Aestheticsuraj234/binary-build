@@ -1,4 +1,3 @@
-import type {PlaygroundEvent} from '@binary/shared';
 import {
   API_ERROR_CODES,
   getProvider,
@@ -8,56 +7,11 @@ import {
 import {Hono} from 'hono';
 
 import type {Engine} from '../engine/engine';
-import {EngineError} from '../engine/engine';
 import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
 import type {SignedInEnv} from '../middleware/require-user';
 import {VaultError} from '../vault';
-
-/**
- * Streams an engine's answer as newline-delimited JSON: a `start` line, then
- * `text` lines as the model writes, then `done` (or `error`).
- */
-function streamAnswer(
-  engine: Engine,
-  prompt: string,
-  signal: AbortSignal,
-): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  let isClosed = false;
-
-  return new ReadableStream({
-    async start(controller) {
-      const send = (event: PlaygroundEvent) => {
-        if (!isClosed) {
-          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-        }
-      };
-
-      send({type: 'start', model: engine.model});
-      try {
-        for await (const text of engine.stream({prompt, signal})) {
-          send({type: 'text', text});
-        }
-        send({type: 'done'});
-      } catch (error) {
-        const message =
-          error instanceof EngineError
-            ? error.message
-            : 'Something went wrong.';
-        send({type: 'error', message});
-      }
-      if (!isClosed) {
-        isClosed = true;
-        controller.close();
-      }
-    },
-    cancel() {
-      // The browser went away; stop sending.
-      isClosed = true;
-    },
-  });
-}
+import {streamAnswer} from './stream-answer';
 
 /**
  * The Playground route, mounted at /api/playground. The web app calls it once
@@ -108,12 +62,7 @@ export function playgroundRoutes(engineFor: EngineFactory) {
       throw error;
     }
 
-    return new Response(streamAnswer(engine, prompt, c.req.raw.signal), {
-      headers: {
-        'content-type': 'application/x-ndjson; charset=utf-8',
-        'cache-control': 'no-store',
-      },
-    });
+    return streamAnswer(engine, {prompt, signal: c.req.raw.signal});
   });
 
   return routes;

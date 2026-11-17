@@ -9,7 +9,7 @@ import {Spinner} from '@/components/ui/spinner';
 import {authClient} from '@/lib/auth-client';
 
 /** Ends the session and returns to the sign-in page. */
-export function SignOutButton() {
+export function SignOutButton({iconOnly = false}: {iconOnly?: boolean}) {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -21,9 +21,16 @@ export function SignOutButton() {
   }
 
   return (
-    <Button variant="ghost" onClick={handleClick} disabled={isSigningOut}>
+    <Button
+      variant="ghost"
+      size={iconOnly ? 'icon' : 'default'}
+      onClick={handleClick}
+      disabled={isSigningOut}
+      aria-label={iconOnly ? 'Sign out' : undefined}
+      title={iconOnly ? 'Sign out' : undefined}
+    >
       {isSigningOut ? <Spinner /> : <LogOutIcon aria-hidden />}
-      <span className="hidden sm:inline">Sign out</span>
+      {!iconOnly && 'Sign out'}
     </Button>
   );
 }

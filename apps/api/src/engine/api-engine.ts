@@ -79,8 +79,11 @@ export class ApiEngine implements Engine {
   async *stream(request: EngineRequest): AsyncIterable<string> {
     const result = streamText({
       model: this.languageModel,
-      prompt: request.prompt,
       system: request.system,
+      messages: [
+        ...(request.history ?? []),
+        {role: 'user', content: request.prompt},
+      ],
       abortSignal: request.signal,
       // One quick retry for a hiccup; more would keep people waiting.
       maxRetries: 1,

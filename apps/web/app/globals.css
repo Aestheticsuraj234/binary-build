@@ -83,3 +83,112 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 }
+
+/*
+ * Character animations. Each mood moves one part of the face:
+ *   idle      a slow float and an occasional blink
+ *   thinking  a gentle sway, with thought dots fading in turn
+ *   talking   the mouth opens and closes
+ *   happy     a little bounce
+ * Everything stops for people who ask their device for reduced motion.
+ */
+.character-animated .character-body {
+  transform-box: view-box;
+  transform-origin: 60px 110px;
+}
+.character-animated .character-eyes,
+.character-animated .character-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.character-animated[data-mood='idle'] .character-body {
+  animation: character-float 3.2s ease-in-out infinite;
+}
+.character-animated[data-mood='idle'] .character-eyes {
+  animation: character-blink 4.5s ease-in-out infinite;
+}
+.character-animated[data-mood='thinking'] .character-body {
+  animation: character-sway 2.4s ease-in-out infinite;
+}
+.character-animated[data-mood='thinking'] .character-thought circle {
+  animation: character-thought 1.5s ease-in-out infinite;
+}
+.character-animated[data-mood='thinking']
+  .character-thought
+  circle:nth-child(2) {
+  animation-delay: 0.25s;
+}
+.character-animated[data-mood='thinking']
+  .character-thought
+  circle:nth-child(3) {
+  animation-delay: 0.5s;
+}
+.character-animated[data-mood='talking'] .character-mouth {
+  animation: character-talk 0.32s ease-in-out infinite alternate;
+}
+.character-animated[data-mood='talking'] .character-body {
+  animation: character-float 1.6s ease-in-out infinite;
+}
+.character-animated[data-mood='happy'] .character-body {
+  animation: character-bounce 0.9s ease-out infinite;
+}
+
+@keyframes character-float {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes character-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes character-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes character-thought {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes character-talk {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1.1);
+  }
+}
+@keyframes character-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  30% {
+    transform: translateY(-7px) scale(0.98, 1.03);
+  }
+  55% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character * {
+    animation: none !important;
+  }
+}
