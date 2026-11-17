@@ -1,0 +1,33 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "auth:schema": "auth generate --config src/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes"
+  },
+  "dependencies": {
+    "@better-auth/expo": "^1.7.25",
+    "@binary/db": "workspace:*",
+    "@binary/shared": "workspace:*",
+    "@hono/node-server": "^2.1.8",
+    "better-auth": "^1.7.25",
+    "hono": "^4.13.19",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@binary/eslint-config": "workspace:*",
+    "@binary/typescript-config": "workspace:*",
+    "@types/node": "^24.12.0",
+    "auth": "^1.7.25",
+    "eslint": "^10.9.1",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

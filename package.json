@@ -1,17 +1,25 @@
 {
-  "name": "my-turborepo",
+  "name": "binary",
   "private": true,
+  "type": "module",
   "scripts": {
+    "setup": "node scripts/setup.ts",
+    "dev": "docker compose up -d --wait && turbo run dev --filter=api --filter=web",
+    "mobile": "pnpm --filter mobile start",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @binary/db db:migrate",
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "lint": "turbo run lint && prettier --check .",
+    "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "format": "prettier --write ."
   },
   "devDependencies": {
+    "@types/node": "^24.12.0",
     "prettier": "3.9.6",
     "turbo": "^2.11.11",
-    "typescript": "7.0.2"
+    "typescript": "~6.0.3"
   },
   "packageManager": "pnpm@11.25.0",
   "engines": {

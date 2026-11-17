@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Lint, typecheck, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # The same Postgres + pgvector image as docker-compose.yml.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: binary
+          POSTGRES_PASSWORD: binary
+          POSTGRES_DB: binary_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U binary -d binary_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgres://binary:binary@localhost:5433/binary_test
+      TEST_DATABASE_URL: postgres://binary:binary@localhost:5433/binary_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pnpm version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint and Prettier)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm check-types
+
+      - name: Migrate the test database
+        run: pnpm db:migrate
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build the web app
+        run: pnpm build

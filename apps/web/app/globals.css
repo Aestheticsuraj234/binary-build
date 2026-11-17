@@ -1,50 +1,85 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/*
+ * Binary design tokens. These values must match
+ * packages/shared/src/design-tokens.ts (a test checks this).
+ * See docs/design-system.md for when to use each one.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --binary-background: #09090b;
+  --binary-surface: #18181b;
+  --binary-surface-raised: #27272a;
+  --binary-border: #27272a;
+  --binary-border-strong: #3f3f46;
+  --binary-text: #fafafa;
+  --binary-text-muted: #a1a1aa;
+  --binary-text-subtle: #71717a;
+  --binary-accent: #d1fe17;
+  --binary-accent-pressed: #b6e000;
+  --binary-on-accent: #09090b;
+  --binary-danger: #f87171;
+  --binary-danger-surface: #2a1215;
+
+  /* shadcn/ui names, mapped onto the tokens above. Dark only. */
+  color-scheme: dark;
+  --background: var(--binary-background);
+  --foreground: var(--binary-text);
+  --card: var(--binary-surface);
+  --card-foreground: var(--binary-text);
+  --popover: var(--binary-surface);
+  --popover-foreground: var(--binary-text);
+  --primary: var(--binary-accent);
+  --primary-foreground: var(--binary-on-accent);
+  --secondary: var(--binary-surface-raised);
+  --secondary-foreground: var(--binary-text);
+  --muted: var(--binary-surface-raised);
+  --muted-foreground: var(--binary-text-muted);
+  /* shadcn's "accent" is a hover background, not Binary's lime accent. */
+  --accent: var(--binary-surface-raised);
+  --accent-foreground: var(--binary-text);
+  --destructive: var(--binary-danger);
+  --border: var(--binary-border);
+  --input: var(--binary-border-strong);
+  --ring: var(--binary-accent);
+  --radius: 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-subtle: var(--binary-text-subtle);
+  --color-primary-pressed: var(--binary-accent-pressed);
+  --color-danger-surface: var(--binary-danger-surface);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.imgDark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
   }
 }

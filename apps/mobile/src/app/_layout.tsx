@@ -1,0 +1,53 @@
+import {colors} from '@binary/shared';
+import {Stack} from 'expo-router';
+import {StatusBar} from 'expo-status-bar';
+import {ActivityIndicator, StyleSheet, View} from 'react-native';
+
+import {authClient} from '@/lib/auth-client';
+
+/**
+ * Root of the app. Reads the saved session, then shows either the signed-in
+ * screens or the sign-in screens. When the session changes (sign in, sign
+ * out), Expo Router moves to the right screen on its own.
+ */
+export default function RootLayout() {
+  const {data: session, isPending} = authClient.useSession();
+  const isSignedIn = Boolean(session);
+
+  if (isPending) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: {backgroundColor: colors.background},
+        }}
+      >
+        <Stack.Protected guard={isSignedIn}>
+          <Stack.Screen name="index" />
+        </Stack.Protected>
+        <Stack.Protected guard={!isSignedIn}>
+          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="sign-up" />
+        </Stack.Protected>
+      </Stack>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+});

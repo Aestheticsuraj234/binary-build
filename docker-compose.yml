@@ -1,0 +1,24 @@
+# Local infrastructure for Binary.
+# Postgres ships with pgvector already installed, because later chapters
+# store agent memory as vectors in the same database.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: binary-postgres-build
+    environment:
+      POSTGRES_USER: binary
+      POSTGRES_PASSWORD: binary
+      POSTGRES_DB: binary
+    ports:
+      - '5433:5432'
+    volumes:
+      - binary-postgres-data-build:/var/lib/postgresql/data
+    # Lets `docker compose up --wait` return only once Postgres accepts connections.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U binary -d binary']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  binary-postgres-data-build:

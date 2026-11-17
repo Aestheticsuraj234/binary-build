@@ -1,159 +1,94 @@
-# Turborepo starter
+# Binary
 
-This Turborepo starter is maintained by the Turborepo core team.
+An open-source personal AI assistant you run on your own machine: AI coworkers
+that chat with you, use your apps and do real work, always asking before
+anything risky.
 
-## Using this example
+This is chapter 1: the foundation. A monorepo with an API, a web app and a
+mobile app, sharing one Postgres database and email-and-password sign-in. No AI
+yet.
 
-Run the following command:
+## What's inside
 
-```sh
-npx create-turbo@latest
-```
+| Path                         | What it is                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| `apps/api`                   | Hono API on Node. Serves Better Auth at `/api/auth/*`.                     |
+| `apps/web`                   | Next.js web app with Tailwind and shadcn/ui.                               |
+| `apps/mobile`                | Expo app (Expo Router). Keeps the session in secure storage.               |
+| `packages/shared`            | Form validation (Zod) and design tokens, used by all three.                |
+| `packages/db`                | Drizzle schema, migrations and database client.                            |
+| `packages/eslint-config`     | Lint rules based on the Google TypeScript Style Guide.                     |
+| `packages/typescript-config` | Shared `tsconfig` settings.                                                |
+| `docs/design-system.md`      | Colours, spacing, type and component rules. Read before building a screen. |
 
-## What's inside?
+## Requirements
 
-This Turborepo includes the following packages/apps:
+- Node.js 24 or newer
+- pnpm 11 (`corepack enable` picks the right version)
+- Docker, for Postgres
+- For the phone: the Expo Go app, on the same Wi-Fi as your computer
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Getting started
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install
+pnpm run setup   # .env with a random secret, Postgres, migrations
+pnpm dev         # Postgres + API (port 3001) + web (port 3000)
 ```
 
-Without global `turbo`, use your package manager:
+Open http://localhost:3000 and create an account.
+
+> Use `pnpm run setup`, not `pnpm setup`. `pnpm setup` is a built-in pnpm
+> command that sets up pnpm itself, so it never reaches this project's script.
+
+### On your phone
+
+With `pnpm dev` running, start Expo in a second terminal and scan the QR code
+with your phone's camera (iPhone) or the Expo Go app (Android):
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
+pnpm mobile
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+The phone talks to the API at your computer's Wi-Fi address, which
+`pnpm run setup` writes to `apps/mobile/.env.local`. If your address changes
+(new network, new router), run `pnpm run setup` again.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Everyday commands
 
-```sh
-turbo build --filter=docs
-```
+| Command            | What it does                                  |
+| ------------------ | --------------------------------------------- |
+| `pnpm dev`         | Start Postgres, the API and the web app.      |
+| `pnpm mobile`      | Start the Expo dev server for the phone.      |
+| `pnpm lint`        | ESLint, then a Prettier formatting check.     |
+| `pnpm format`      | Fix formatting with Prettier.                 |
+| `pnpm check-types` | TypeScript in every package.                  |
+| `pnpm test`        | Unit tests, plus auth tests against Postgres. |
+| `pnpm build`       | Production build of the web app.              |
+| `pnpm db:migrate`  | Apply database migrations.                    |
+| `pnpm db:down`     | Stop Postgres (your data is kept).            |
 
-Without global `turbo`:
+### Changing the database
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+1. Edit the schema in `packages/db/src/schema/`.
+2. `pnpm --filter @binary/db db:generate` writes a migration.
+3. `pnpm db:migrate` applies it. Tests migrate their own database.
 
-### Develop
+## How sign-in works
 
-To develop all apps and packages, run the following command:
+- The **API** runs Better Auth and stores users and sessions in Postgres. It
+  refuses to start if `BETTER_AUTH_SECRET` is missing, shorter than 32
+  characters, or still a placeholder.
+- The **web app** forwards `/api/auth/*` to the API, so the session cookie
+  belongs to the web app. `apps/web/proxy.ts` checks the session before each
+  page: signed out goes to `/sign-in`, signed in skips the sign-in pages.
+- The **mobile app** calls the API directly and stores the session in the
+  phone's secure storage (Keychain or Keystore).
+- **Validation** lives in `packages/shared`. Web, mobile and the API run the
+  same Zod schemas, so the error messages are identical everywhere.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Code style
 
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+The [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html),
+enforced by ESLint and formatted by Prettier. The one exception: Next.js pages
+and Expo Router screens use default exports, because the frameworks require it.
