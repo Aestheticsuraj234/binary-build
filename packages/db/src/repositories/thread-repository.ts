@@ -120,12 +120,16 @@ export class ThreadRepository {
     });
   }
 
-  /** Saves a complete answer from the agent. */
-  addAnswer(threadId: string, content: string): Promise<MessageRow> {
+  /** Saves a complete answer from the agent, with the tools it used. */
+  addAnswer(
+    threadId: string,
+    content: string,
+    toolCalls: unknown[] = [],
+  ): Promise<MessageRow> {
     return this.db.transaction(async tx => {
       const [row] = await tx
         .insert(messages)
-        .values({threadId, role: 'assistant', content})
+        .values({threadId, role: 'assistant', content, toolCalls})
         .returning();
       await tx
         .update(threads)

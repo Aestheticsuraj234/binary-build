@@ -159,6 +159,53 @@ What happens when you send a message
 Only the tab that sent the message streams. Other tabs and devices see new
 messages after a reload.
 
+## How tools work
+
+Agents can call **tools** while they answer: the model asks for a tool,
+reads its result, then carries on (up to 6 steps per answer). Each call
+shows up live inside the reply, and is saved with it.
+
+- **Built in** (`apps/api/src/tools/built-in.ts`): `get_current_time` and
+  `fetch_web_page`.
+- **Apps**: any MCP server you reach by URL (Streamable HTTP). Connect one
+  on **Apps & tools**; it's tested before it's saved. Its Authorization
+  header is encrypted like your API keys and never sent back.
+- **Integrations** (Gmail, GitHub, Slack and every other Composio
+  toolkit), through the `@composio/core` SDK. Set `COMPOSIO_API_KEY` in
+  `.env` (get one at [platform.composio.dev](https://platform.composio.dev))
+  and restart `pnpm dev`; without it the page explains how to turn it on.
+  - The **Integrations** page lists Composio's whole catalog (cached on the
+    API for an hour) with search, category and status filters. Each Binary
+    user is their own Composio user and signs in on Composio's page, so
+    Binary never sees passwords or account tokens.
+  - Agents get the tools of every integration with a working account, plus
+    the no-account ones (like Hacker News) you switched on.
+  - A Composio tool is `read` only if Composio tags it `readOnlyHint`, and
+    tools run in a Composio session that only enables read-only tools, so
+    Composio itself refuses the rest too.
+  - Toolkits Composio doesn't manage (no shield on the page) need an auth
+    config in your Composio dashboard before they can connect.
+- **Risk levels**: `read` (only looks things up), `write` (changes something
+  outside Binary) and `computer` (sandboxes and computers, later). An app's
+  tool is `read` only if its server marks it `readOnlyHint: true`; anything
+  else is `write`.
+- **Policy** (`apps/api/src/tools/toolbox.ts`): only `read` tools run. A
+  `write` or `computer` tool is never called; the model is told it was
+  blocked and why, and the reply shows it as blocked.
+- **Public pages only**: `fetch_web_page` refuses this computer, your
+  network, cloud metadata addresses and anything else that isn't public.
+  The address is checked at the moment of connecting, and again after every
+  redirect. (App URLs aren't restricted: you connect those on purpose.)
+- **An app that's down** shows an error on Apps & tools. In a chat, its
+  tools are left out, the model is told, and the chat carries on.
+
+### Errors
+
+Routes throw typed errors from `apps/api/src/errors.ts` (`NotFoundError`,
+`InvalidInputError`, `ConflictError`, `NoKeyError`, `UnsafeUrlError`,
+`AppUnreachableError`). One handler turns each into `{code, message}` JSON
+with the right status; anything unexpected becomes a plain 500.
+
 ## Code style
 
 The [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html),

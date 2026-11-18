@@ -5,6 +5,7 @@ import {createApp} from './app';
 import {createAuth} from './auth';
 import type {Env} from './env';
 import {getTrustedOrigins, loadEnv} from './env';
+import {createComposioGateway} from './tools/composio';
 import {createVault} from './vault';
 
 function main(): void {
@@ -25,7 +26,17 @@ function main(): void {
     trustedOrigins,
   });
   const vault = createVault(env.ENCRYPTION_KEY);
-  const app = createApp({auth, db, vault, trustedOrigins});
+  const composio = env.COMPOSIO_API_KEY
+    ? createComposioGateway(env.COMPOSIO_API_KEY)
+    : null;
+  const app = createApp({
+    auth,
+    db,
+    vault,
+    trustedOrigins,
+    composio,
+    webUrl: env.WEB_URL,
+  });
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.
   const server = serve(

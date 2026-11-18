@@ -1,12 +1,8 @@
-import {
-  API_ERROR_CODES,
-  getProvider,
-  playgroundSchema,
-  validate,
-} from '@binary/shared';
+import {getProvider, playgroundSchema} from '@binary/shared';
 import {Hono} from 'hono';
 
 import type {Engine} from '../engine/engine';
+import {NoKeyError, readJson} from '../errors';
 import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
 import type {SignedInEnv} from '../middleware/require-user';
@@ -21,19 +17,7 @@ export function playgroundRoutes(engineFor: EngineFactory) {
   const routes = new Hono<SignedInEnv>();
 
   routes.post('/', async c => {
-    const body: unknown = await c.req.json().catch(() => null);
-    const result = validate(playgroundSchema, body);
-    if (!result.success) {
-      return c.json(
-        {
-          code: API_ERROR_CODES.invalidInput,
-          message: result.firstError,
-          fieldErrors: result.errors,
-        },
-        400,
-      );
-    }
-    const {provider, prompt} = result.data;
+    const {provider, prompt} = await readJson(c, playgroundSchema);
     const name = getProvider(provider).name;
 
     let engine: Engine;
@@ -41,22 +25,14 @@ export function playgroundRoutes(engineFor: EngineFactory) {
       engine = await engineFor(c.var.user.id, provider);
     } catch (error) {
       if (error instanceof MissingKeyError) {
-        return c.json(
-          {
-            code: API_ERROR_CODES.noKey,
-            message: `Add your ${name} key on the API keys page to try it here.`,
-          },
-          409,
+        throw new NoKeyError(
+          `Add your ${name} key on the API keys page to try it here.`,
         );
       }
       if (error instanceof VaultError) {
         // Happens if ENCRYPTION_KEY changed after the key was saved.
-        return c.json(
-          {
-            code: API_ERROR_CODES.noKey,
-            message: `Your saved ${name} key can't be read anymore. Save it again on the API keys page.`,
-          },
-          409,
+        throw new NoKeyError(
+          `Your saved ${name} key can't be read anymore. Save it again on the API keys page.`,
         );
       }
       throw error;

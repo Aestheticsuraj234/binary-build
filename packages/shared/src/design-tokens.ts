@@ -20,6 +20,9 @@ export const colors = {
   onAccent: '#09090b',
   danger: '#f87171',
   dangerSurface: '#2a1215',
+  /** Caution, not failure: tools that can change things, blocked calls. */
+  warning: '#fbbf24',
+  warningSurface: '#2a2008',
 } as const;
 
 /** Spacing steps in pixels. Use these instead of one-off numbers. */

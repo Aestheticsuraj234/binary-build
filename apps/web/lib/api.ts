@@ -3,9 +3,11 @@ import 'server-only';
 import type {
   AgentSummary,
   AgentTemplateSummary,
+  IntegrationsCatalog,
   ProviderKeyStatus,
   ThreadDetail,
   ThreadSummary,
+  ToolsOverview,
 } from '@binary/shared';
 import {headers} from 'next/headers';
 import {redirect} from 'next/navigation';
@@ -82,4 +84,20 @@ export const fetchThreads = cache(async (): Promise<ThreadSummary[]> => {
 export const fetchThread = cache(
   async (id: string): Promise<ThreadDetail | null> =>
     apiGet<ThreadDetail>(`/api/threads/${encodeURIComponent(id)}`),
+);
+
+/** Built-in tools, and each connected app with its tools (or its error). */
+export const fetchToolsOverview = cache(async (): Promise<ToolsOverview> => {
+  const body = await apiGet<ToolsOverview>('/api/apps');
+  return body ?? {builtIn: [], apps: []};
+});
+
+/** Every Composio integration, with this person's status for each. */
+export const fetchIntegrations = cache(
+  async (): Promise<IntegrationsCatalog> => {
+    const body = await apiGet<IntegrationsCatalog>('/api/integrations');
+    return (
+      body ?? {available: false, integrations: [], categories: [], error: null}
+    );
+  },
 );

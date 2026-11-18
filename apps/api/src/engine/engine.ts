@@ -1,4 +1,5 @@
 import type {ChatTurn, ProviderId} from '@binary/shared';
+import type {ToolSet} from 'ai';
 
 /** What to ask a model. */
 export interface EngineRequest {
@@ -10,7 +11,21 @@ export interface EngineRequest {
   system?: string;
   /** Stops the request, for example when the person leaves the page. */
   signal?: AbortSignal;
+  /** Tools the model may call. */
+  tools?: ToolSet;
+  /**
+   * How many model calls one answer may take. Each tool call and its result
+   * use one, so with tools this should be more than 1. Defaults to 1.
+   */
+  maxSteps?: number;
 }
+
+/** One piece of an answer, in the order the model produced it. */
+export type EnginePart =
+  | {type: 'text'; text: string}
+  | {type: 'tool-call'; id: string; name: string; input: unknown}
+  | {type: 'tool-result'; id: string; name: string; output: unknown}
+  | {type: 'tool-error'; id: string; name: string; error: string};
 
 /**
  * Something that can answer a prompt.
@@ -23,10 +38,11 @@ export interface Engine {
   readonly provider: ProviderId;
   readonly model: string;
   /**
-   * Streams the answer piece by piece as the model writes it.
-   * Throws an `EngineError` if the provider fails.
+   * Streams the answer piece by piece as the model writes it, including
+   * any tool calls and their results. Throws an `EngineError` if the
+   * provider fails.
    */
-  stream(request: EngineRequest): AsyncIterable<string>;
+  stream(request: EngineRequest): AsyncIterable<EnginePart>;
 }
 
 /** Why an engine failed, in words a person can act on. */

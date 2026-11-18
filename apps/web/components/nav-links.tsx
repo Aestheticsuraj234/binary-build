@@ -2,7 +2,13 @@
 
 import {cn} from 'cn';
 import type {LucideIcon} from 'lucide-react';
-import {CompassIcon, FlaskConicalIcon, KeyRoundIcon} from 'lucide-react';
+import {
+  BlocksIcon,
+  CompassIcon,
+  FlaskConicalIcon,
+  KeyRoundIcon,
+  PlugIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 
@@ -15,6 +21,8 @@ interface NavItem {
 /** The app's main sections. Later chapters add theirs here. */
 const NAV_ITEMS: NavItem[] = [
   {href: '/', label: 'Discover', icon: CompassIcon},
+  {href: '/apps', label: 'Apps & tools', icon: PlugIcon},
+  {href: '/integrations', label: 'Integrations', icon: BlocksIcon},
   {href: '/playground', label: 'Playground', icon: FlaskConicalIcon},
   {href: '/keys', label: 'API keys', icon: KeyRoundIcon},
 ];

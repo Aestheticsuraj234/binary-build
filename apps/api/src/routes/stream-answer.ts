@@ -67,8 +67,11 @@ export function streamAnswer(engine: Engine, request: StreamRequest): Response {
   return ndjsonResponse<PlaygroundEvent>(async send => {
     send({type: 'start', model: engine.model});
     try {
-      for await (const text of engine.stream(request)) {
-        send({type: 'text', text});
+      // The Playground has no tools, so only text arrives.
+      for await (const part of engine.stream(request)) {
+        if (part.type === 'text') {
+          send({type: 'text', text: part.text});
+        }
       }
       send({type: 'done'});
     } catch (error) {

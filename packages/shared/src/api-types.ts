@@ -1,4 +1,5 @@
 import type {ProviderId} from './providers';
+import type {ToolCallRecord} from './tools';
 
 /**
  * How the API describes one provider's key to the apps. The key itself is
@@ -28,18 +29,23 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Tools the agent used while answering, in order. */
+  toolCalls: ToolCallRecord[];
   /** ISO date. */
   createdAt: string;
 }
 
 /**
  * One line of a chat answer, sent as newline-delimited JSON. `start` comes
- * once your message is saved, `delta` carries the next few words, and the
- * stream ends with `done` (the answer, now saved) or `error` (nothing saved).
+ * once your message is saved, `delta` carries the next few words, `tool`
+ * reports a tool call each time it changes (running, then done, failed or
+ * blocked), and the stream ends with `done` (the answer, now saved) or
+ * `error` (nothing saved).
  */
 export type ChatEvent =
   | {type: 'start'; model: string; userMessage: ChatMessage}
   | {type: 'delta'; text: string}
+  | {type: 'tool'; call: ToolCallRecord}
   | {type: 'error'; message: string}
   | {type: 'done'; message: ChatMessage};
 
@@ -72,7 +78,13 @@ export const API_ERROR_CODES = {
   noKey: 'NO_KEY',
   notFound: 'NOT_FOUND',
   readOnly: 'READ_ONLY',
+  conflict: 'CONFLICT',
+  unsafeUrl: 'UNSAFE_URL',
+  appUnreachable: 'APP_UNREACHABLE',
 } as const;
+
+export type ApiErrorCode =
+  (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];
 
 /**
  * An agent as the apps see it: only the fields they need. The owner and

@@ -1,9 +1,9 @@
 import type {ProviderId} from '@binary/shared';
 import {getProvider} from '@binary/shared';
 import type {LanguageModel} from 'ai';
-import {APICallError, RetryError, streamText} from 'ai';
+import {APICallError, RetryError, stepCountIs, streamText} from 'ai';
 
-import type {Engine, EngineRequest} from './engine';
+import type {Engine, EnginePart, EngineRequest} from './engine';
 import {EngineError} from './engine';
 
 /** Turns whatever the AI SDK threw into an `EngineError` with a clear message. */
@@ -76,7 +76,7 @@ export class ApiEngine implements Engine {
     this.languageModel = languageModel;
   }
 
-  async *stream(request: EngineRequest): AsyncIterable<string> {
+  async *stream(request: EngineRequest): AsyncIterable<EnginePart> {
     const result = streamText({
       model: this.languageModel,
       system: request.system,
@@ -85,6 +85,9 @@ export class ApiEngine implements Engine {
         {role: 'user', content: request.prompt},
       ],
       abortSignal: request.signal,
+      tools: request.tools,
+      // Call a tool, read its result, answer: each is a step.
+      stopWhen: stepCountIs(request.maxSteps ?? 1),
       // One quick retry for a hiccup; more would keep people waiting.
       maxRetries: 1,
       // Errors are handled below, so skip the AI SDK's own console logging.
@@ -96,7 +99,31 @@ export class ApiEngine implements Engine {
     try {
       for await (const part of result.stream) {
         if (part.type === 'text-delta') {
-          yield part.text;
+          yield {type: 'text', text: part.text};
+        } else if (part.type === 'tool-call') {
+          yield {
+            type: 'tool-call',
+            id: part.toolCallId,
+            name: part.toolName,
+            input: part.input,
+          };
+        } else if (part.type === 'tool-result') {
+          yield {
+            type: 'tool-result',
+            id: part.toolCallId,
+            name: part.toolName,
+            output: part.output,
+          };
+        } else if (part.type === 'tool-error') {
+          yield {
+            type: 'tool-error',
+            id: part.toolCallId,
+            name: part.toolName,
+            error:
+              part.error instanceof Error
+                ? part.error.message
+                : 'The tool failed.',
+          };
         } else if (part.type === 'error') {
           throw toEngineError(part.error, this.provider, this.model);
         } else if (part.type === 'abort') {

@@ -6,6 +6,8 @@ import {MockLanguageModelV4} from 'ai/test';
 import {createApp} from '../src/app';
 import {createAuth} from '../src/auth';
 import type {ModelBuilder} from '../src/engine/factory';
+import type {ComposioGateway} from '../src/tools/composio';
+import type {BinaryTool} from '../src/tools/toolbox';
 import {createVault} from '../src/vault';
 import {
   API_URL,
@@ -16,7 +18,13 @@ import {
 } from './test-env';
 
 /** Builds the real app against the test database. */
-export function createTestApp(options: {buildModel?: ModelBuilder} = {}) {
+export function createTestApp(
+  options: {
+    buildModel?: ModelBuilder;
+    builtInTools?: () => BinaryTool[];
+    composio?: ComposioGateway | null;
+  } = {},
+) {
   const db: Database = createDb(TEST_DATABASE_URL);
   const trustedOrigins = [WEB_URL, 'binary://', 'exp://'];
   const auth = createAuth({
@@ -32,6 +40,9 @@ export function createTestApp(options: {buildModel?: ModelBuilder} = {}) {
     vault,
     trustedOrigins,
     buildModel: options.buildModel,
+    builtInTools: options.builtInTools,
+    composio: options.composio,
+    webUrl: WEB_URL,
   });
   return {app, db, vault};
 }
@@ -174,4 +185,50 @@ export async function readEvents(response: Response): Promise<unknown[]> {
     .split('\n')
     .filter(line => line !== '')
     .map(line => JSON.parse(line) as unknown);
+}
+
+/** One model call in a scripted conversation: tool calls, or text. */
+export type ScriptedStep =
+  {toolCalls: Array<{name: string; input: object}>} | {text: string};
+
+/**
+ * A fake model that plays `steps` in order, one per model call: first it
+ * asks for tools, then (after reading their results) it writes its answer.
+ */
+export function scriptedModel(steps: ScriptedStep[]): MockLanguageModelV4 {
+  let call = 0;
+  return new MockLanguageModelV4({
+    doStream: async () => {
+      const step = steps[Math.min(call, steps.length - 1)]!;
+      const stepIndex = call++;
+      const chunks =
+        'toolCalls' in step
+          ? step.toolCalls.map((toolCall, index) => ({
+              type: 'tool-call' as const,
+              toolCallId: `call-${stepIndex}-${index}`,
+              toolName: toolCall.name,
+              input: JSON.stringify(toolCall.input),
+            }))
+          : [
+              {type: 'text-start' as const, id: 'text-1'},
+              {type: 'text-delta' as const, id: 'text-1', delta: step.text},
+              {type: 'text-end' as const, id: 'text-1'},
+            ];
+      return {
+        stream: simulateReadableStream({
+          chunks: [
+            ...chunks,
+            {
+              type: 'finish' as const,
+              finishReason: {
+                unified: 'toolCalls' in step ? 'tool-calls' : 'stop',
+                raw: undefined,
+              },
+              usage: FAKE_USAGE,
+            },
+          ],
+        }),
+      };
+    },
+  });
 }

@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Mood,
   ThreadSummary,
+  ToolCallRecord,
 } from '@binary/shared';
 import {
   CHAT_MESSAGE_MAX_LENGTH,
@@ -35,6 +36,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {ModelBadge} from '@/components/cards';
 import {CharacterFace} from '@/components/character-face';
 import {Markdown} from '@/components/markdown';
+import {ToolCallCard} from '@/components/tools';
 import {ApiError, apiFetch, apiJson} from '@/lib/api';
 
 /** One message on screen. An `error` means the answer wasn't saved. */
@@ -42,11 +44,20 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  toolCalls: ToolCallRecord[];
   error?: string;
   isStreaming?: boolean;
 }
 
-function stageLine(mood: Mood, name: string, greeting: string): string {
+function stageLine(
+  mood: Mood,
+  name: string,
+  greeting: string,
+  activeTool: string | undefined,
+): string {
+  if (activeTool) {
+    return `${name} is using ${activeTool.replace(/[_-]+/g, ' ')}…`;
+  }
   switch (mood) {
     case 'thinking':
       return `${name} is thinking…`;
@@ -88,6 +99,8 @@ export function Chat({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState('');
   const [mood, setMood] = useState<Mood>('idle');
+  // The tool being used right now, for the stage line.
+  const [activeTool, setActiveTool] = useState<string>();
   const nextLocalId = useRef(1);
   const controllerRef = useRef<AbortController>(null);
   const happyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -134,8 +147,14 @@ export function Chat({
     const answerId = localId();
     setMessages(current => [
       ...current,
-      {id: questionId, role: 'user', content: message},
-      {id: answerId, role: 'assistant', content: '', isStreaming: true},
+      {id: questionId, role: 'user', content: message, toolCalls: []},
+      {
+        id: answerId,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        isStreaming: true,
+      },
     ]);
     setDraft('');
     clearTimeout(happyTimer.current);
@@ -171,6 +190,18 @@ export function Chat({
               ...m,
               content: m.content + event.text,
             }));
+          } else if (event.type === 'tool') {
+            const {call} = event;
+            setMood(call.status === 'running' ? 'thinking' : 'talking');
+            setActiveTool(call.status === 'running' ? call.name : undefined);
+            updateMessage(answerId, m => ({
+              ...m,
+              toolCalls: m.toolCalls.some(other => other.id === call.id)
+                ? m.toolCalls.map(other =>
+                    other.id === call.id ? call : other,
+                  )
+                : [...m.toolCalls, call],
+            }));
           } else if (event.type === 'error') {
             fail(event.message);
           } else {
@@ -198,6 +229,7 @@ export function Chat({
         ? {...m, isStreaming: false, error: 'The answer stopped part-way.'}
         : m,
     );
+    setActiveTool(undefined);
     if (failed) {
       setMood('idle');
     } else {
@@ -211,6 +243,7 @@ export function Chat({
     clearTimeout(happyTimer.current);
     setThreadId(null);
     setMessages([]);
+    setActiveTool(undefined);
     setMood('idle');
   }
 
@@ -306,7 +339,7 @@ export function Chat({
           <Text accessibilityLiveRegion="polite" style={styles.stageLine}>
             {isFired
               ? `${agent.name} has left the crew.`
-              : stageLine(mood, agent.name, character.greeting)}
+              : stageLine(mood, agent.name, character.greeting, activeTool)}
           </Text>
         </View>
       </View>
@@ -362,11 +395,18 @@ export function Chat({
                   animated={false}
                 />
                 <View style={styles.agentText}>
+                  {message.toolCalls.map(call => (
+                    <ToolCallCard key={call.id} call={call} />
+                  ))}
                   {message.content ? (
                     <Markdown isStreaming={message.isStreaming}>
                       {message.content}
                     </Markdown>
-                  ) : !message.error ? (
+                  ) : !message.error &&
+                    message.isStreaming &&
+                    !message.toolCalls.some(
+                      call => call.status === 'running',
+                    ) ? (
                     <Text style={styles.muted}>Thinking…</Text>
                   ) : null}
                   {message.error && (

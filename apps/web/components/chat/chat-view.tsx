@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   Mood,
   ThreadSummary,
+  ToolCallRecord,
 } from '@binary/shared';
 import {characterOf, CHAT_MESSAGE_MAX_LENGTH, readEvents} from '@binary/shared';
 import {cn} from 'cn';
@@ -18,6 +19,7 @@ import {useEffect, useRef, useState} from 'react';
 import {ModelBadge} from '@/components/agents/cards';
 import {CharacterFace} from '@/components/characters/character-face';
 import {Markdown} from '@/components/chat/markdown';
+import {ToolCallCard} from '@/components/chat/tool-call-card';
 import {Button, buttonVariants} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
 import {announceChatsChanged} from '@/lib/chat-events';
@@ -28,12 +30,21 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  toolCalls: ToolCallRecord[];
   error?: string;
   isStreaming?: boolean;
 }
 
 /** What the character says on the stage for each mood. */
-function stageLine(mood: Mood, name: string, greeting: string): string {
+function stageLine(
+  mood: Mood,
+  name: string,
+  greeting: string,
+  activeTool: string | undefined,
+): string {
+  if (activeTool) {
+    return `${name} is using ${activeTool.replace(/[_-]+/g, ' ')}…`;
+  }
   switch (mood) {
     case 'thinking':
       return `${name} is thinking…`;
@@ -84,6 +95,8 @@ export function ChatView({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState('');
   const [mood, setMood] = useState<Mood>('idle');
+  // The tool being used right now, for the stage line.
+  const [activeTool, setActiveTool] = useState<string>();
   const [isDeleting, setIsDeleting] = useState(false);
   const nextLocalId = useRef(1);
   const controllerRef = useRef<AbortController>(null);
@@ -166,8 +179,14 @@ export function ChatView({
     const answerId = localId();
     setMessages(current => [
       ...current,
-      {id: questionId, role: 'user', content: message},
-      {id: answerId, role: 'assistant', content: '', isStreaming: true},
+      {id: questionId, role: 'user', content: message, toolCalls: []},
+      {
+        id: answerId,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        isStreaming: true,
+      },
     ]);
     setDraft('');
     followRef.current = true;
@@ -204,6 +223,19 @@ export function ChatView({
               ...m,
               content: m.content + event.text,
             }));
+          } else if (event.type === 'tool') {
+            const {call} = event;
+            // A running tool means the character is busy, not talking.
+            setMood(call.status === 'running' ? 'thinking' : 'talking');
+            setActiveTool(call.status === 'running' ? call.name : undefined);
+            updateMessage(answerId, m => ({
+              ...m,
+              toolCalls: m.toolCalls.some(other => other.id === call.id)
+                ? m.toolCalls.map(other =>
+                    other.id === call.id ? call : other,
+                  )
+                : [...m.toolCalls, call],
+            }));
           } else if (event.type === 'error') {
             fail(event.message);
           } else {
@@ -232,6 +264,7 @@ export function ChatView({
         ? {...m, isStreaming: false, error: 'The answer stopped part-way.'}
         : m,
     );
+    setActiveTool(undefined);
     if (failed) {
       setMood('idle');
     } else {
@@ -337,7 +370,7 @@ export function ChatView({
             >
               {isFired
                 ? `${agent.name} has left the crew.`
-                : stageLine(mood, agent.name, character.greeting)}
+                : stageLine(mood, agent.name, character.greeting, activeTool)}
             </p>
           </div>
         </div>
@@ -421,12 +454,23 @@ export function ChatView({
                         className="mt-0.5 shrink-0"
                       />
                       <div className="min-w-0 flex-1 pt-1">
+                        {message.toolCalls.length > 0 && (
+                          <div className="mb-3 flex flex-col gap-2">
+                            {message.toolCalls.map(call => (
+                              <ToolCallCard key={call.id} call={call} />
+                            ))}
+                          </div>
+                        )}
                         {message.content ? (
                           <Markdown isStreaming={message.isStreaming}>
                             {message.content}
                           </Markdown>
                         ) : (
-                          !message.error && (
+                          !message.error &&
+                          message.isStreaming &&
+                          !message.toolCalls.some(
+                            call => call.status === 'running',
+                          ) && (
                             <p className="text-sm text-muted-foreground">
                               Thinking…
                             </p>

@@ -1,0 +1,146 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a791291b-5483-414c-a6c7-f6442856eb8c",
+  "prevIds": [
+    "b8ddd50f-867f-4129-b61a-14b74bd34801"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "enabled_toolkits"
+      ],
+      "writes": [
+        "s|tbl|public.enabled_toolkits",
+        "n|tbl|public.enabled_toolkits",
+        "e|tbl|public.enabled_toolkits",
+        "n|rel|public.enabled_toolkits",
+        "n|type|public.enabled_toolkits",
+        "n|rel|public.enabled_toolkits_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "enabled_toolkits"
+      ],
+      "writes": [
+        "s|fk|public.enabled_toolkits.enabled_toolkits_user_id_user_id_fkey",
+        "n|fk|public.enabled_toolkits.enabled_toolkits_user_id_user_id_fkey",
+        "e|fk|public.enabled_toolkits.enabled_toolkits_user_id_user_id_fkey",
+        "n|con|public.enabled_toolkits.enabled_toolkits_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.enabled_toolkits",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.enabled_toolkits.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "enabled_toolkits",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "enabled_toolkits",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "enabled_toolkits",
+        "name": "slug",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "enabled_toolkits",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "enabled_toolkits",
+        "name": "enabled_toolkits_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "enabled_toolkits",
+        "name": "enabled_toolkits_pkey",
+        "columns": [
+          "user_id",
+          "slug"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

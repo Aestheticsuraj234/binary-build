@@ -48,6 +48,14 @@ export default function RootLayout() {
             options={{...INNER_SCREEN, title: 'API keys'}}
           />
           <Stack.Screen
+            name="apps"
+            options={{...INNER_SCREEN, title: 'Apps & tools'}}
+          />
+          <Stack.Screen
+            name="integrations"
+            options={{...INNER_SCREEN, title: 'Integrations'}}
+          />
+          <Stack.Screen
             name="agents/new"
             options={{...INNER_SCREEN, title: 'Hire a character'}}
           />

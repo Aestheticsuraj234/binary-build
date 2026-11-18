@@ -6,5 +6,6 @@ export * from './chat-schemas';
 export * from './design-tokens';
 export * from './engine-schemas';
 export * from './providers';
+export * from './tools';
 export * from './read-events';
 export * from './validate';

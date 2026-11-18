@@ -57,6 +57,16 @@ const envSchema = z.object({
   BETTER_AUTH_URL: z.url().default('http://localhost:3001'),
   WEB_URL: z.url().default('http://localhost:3000'),
   PORT: z.coerce.number().int().positive().default(3001),
+  /**
+   * Optional. Turns on Composio (Gmail, GitHub, Slack and more) for
+   * everyone on this Binary. Each person still connects their own accounts.
+   * A placeholder counts as not set.
+   */
+  COMPOSIO_API_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform(key => (key && !isPlaceholderSecret(key) ? key : undefined)),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),

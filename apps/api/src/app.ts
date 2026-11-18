@@ -3,6 +3,7 @@ import {Hono} from 'hono';
 import {csrf} from 'hono/csrf';
 
 import type {Auth} from './auth';
+import {handleError} from './errors';
 import type {ModelBuilder} from './engine/factory';
 import {createEngineFactory} from './engine/factory';
 import type {SignedInEnv} from './middleware/require-user';
@@ -11,7 +12,12 @@ import {agentTemplatesRoutes} from './routes/agent-templates';
 import {agentsRoutes} from './routes/agents';
 import {keysRoutes} from './routes/keys';
 import {playgroundRoutes} from './routes/playground';
+import {appsRoutes} from './routes/apps';
+import {integrationsRoutes} from './routes/integrations';
 import {threadsRoutes} from './routes/threads';
+import {builtInTools as defaultBuiltInTools} from './tools/built-in';
+import type {ComposioGateway} from './tools/composio';
+import type {BinaryTool} from './tools/toolbox';
 import type {Vault} from './vault';
 
 /** Everything the routes need. Tests pass a fake `buildModel`. */
@@ -22,6 +28,12 @@ export interface AppOptions {
   /** Web pages and app schemes allowed to call the API. */
   trustedOrigins: string[];
   buildModel?: ModelBuilder;
+  /** The built-in tools. Tests pass ones with a fixed clock. */
+  builtInTools?: () => BinaryTool[];
+  /** Composio, or null when it's off. Tests pass a fake. */
+  composio?: ComposioGateway | null;
+  /** The web app's address, for links back after connecting an app. */
+  webUrl?: string;
 }
 
 /**
@@ -34,8 +46,13 @@ export function createApp({
   vault,
   trustedOrigins,
   buildModel,
+  builtInTools = defaultBuiltInTools,
+  composio = null,
+  webUrl = 'http://localhost:3000',
 }: AppOptions) {
   const app = new Hono();
+  // Typed errors thrown anywhere become `{code, message}` JSON.
+  app.onError(handleError);
 
   app.get('/health', c => c.json({ok: true}));
 
@@ -53,7 +70,12 @@ export function createApp({
   signedIn.route('/playground', playgroundRoutes(engineFor));
   signedIn.route('/agents', agentsRoutes(db));
   signedIn.route('/agent-templates', agentTemplatesRoutes(db));
-  signedIn.route('/threads', threadsRoutes({db, engineFor}));
+  signedIn.route('/apps', appsRoutes({db, vault, builtInTools}));
+  signedIn.route(
+    '/threads',
+    threadsRoutes({db, vault, engineFor, builtInTools, composio}),
+  );
+  signedIn.route('/integrations', integrationsRoutes({db, composio, webUrl}));
   app.route('/api', signedIn);
 
   return app;

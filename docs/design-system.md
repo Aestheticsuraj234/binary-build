@@ -16,21 +16,23 @@ so change both together.
 
 ## Colour
 
-| Token           | Value     | Use it for                                         |
-| --------------- | --------- | -------------------------------------------------- |
-| `background`    | `#09090b` | The page or screen behind everything.              |
-| `surface`       | `#18181b` | Inputs, cards, secondary buttons.                  |
-| `surfaceRaised` | `#27272a` | Hover and pressed states on surfaces.              |
-| `border`        | `#27272a` | Quiet dividers.                                    |
-| `borderStrong`  | `#3f3f46` | Input and secondary-button outlines.               |
-| `text`          | `#fafafa` | Headings, labels, body text.                       |
-| `textMuted`     | `#a1a1aa` | Supporting text under a heading, hints.            |
-| `textSubtle`    | `#71717a` | Placeholders and the least important text.         |
-| `accent`        | `#d1fe17` | **The one main action on a screen.** Nothing else. |
-| `accentPressed` | `#b6e000` | The main action while pressed or hovered.          |
-| `onAccent`      | `#09090b` | Text and icons on top of `accent`.                 |
-| `danger`        | `#f87171` | Error text and the border of an error message.     |
-| `dangerSurface` | `#2a1215` | The background of an error message.                |
+| Token            | Value     | Use it for                                                                    |
+| ---------------- | --------- | ----------------------------------------------------------------------------- |
+| `background`     | `#09090b` | The page or screen behind everything.                                         |
+| `surface`        | `#18181b` | Inputs, cards, secondary buttons.                                             |
+| `surfaceRaised`  | `#27272a` | Hover and pressed states on surfaces.                                         |
+| `border`         | `#27272a` | Quiet dividers.                                                               |
+| `borderStrong`   | `#3f3f46` | Input and secondary-button outlines.                                          |
+| `text`           | `#fafafa` | Headings, labels, body text.                                                  |
+| `textMuted`      | `#a1a1aa` | Supporting text under a heading, hints.                                       |
+| `textSubtle`     | `#71717a` | Placeholders and the least important text.                                    |
+| `accent`         | `#d1fe17` | **The one main action on a screen.** Nothing else.                            |
+| `accentPressed`  | `#b6e000` | The main action while pressed or hovered.                                     |
+| `onAccent`       | `#09090b` | Text and icons on top of `accent`.                                            |
+| `danger`         | `#f87171` | Error text and the border of an error message.                                |
+| `dangerSurface`  | `#2a1215` | The background of an error message.                                           |
+| `warning`        | `#fbbf24` | Caution, not failure: `write` and `computer` risk badges, blocked tool calls. |
+| `warningSurface` | `#2a2008` | The background behind a blocked tool call's note.                             |
 
 ### Rules for the accent
 
@@ -138,6 +140,41 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 - A failed answer keeps the words that arrived, with the reason in a
   `dangerSurface` box below and a note that it wasn't saved.
 - A fired agent's chat shows a neutral note, and no composer.
+- **Tool calls** sit above the answer text as small cards: a wrench, "Using",
+  "Used", "Tried" or "Blocked" and the tool's name, its risk badge, and a
+  status mark (spinner, lime check, red cross, amber shield). They open to
+  show the input and result as JSON. Blocked and failed calls start open,
+  with the reason on `warningSurface` (blocked) or `dangerSurface` (failed).
+  While a tool runs, the character thinks and the stage says "… is using
+  …".
+
+## Apps & tools
+
+- **Risk badges**: `Read` is a quiet outlined badge; `Write` and `Computer`
+  are `warning` amber, with a book, pencil or monitor icon.
+- The page explains the three levels first, then lists the built-in tools,
+  then the connect form and each connected app (name, `Connected` or a red
+  `Can't reach` badge, the URL with a lock when a token is saved, and its
+  tools). An app that's down shows its reason and a **Try again** button.
+- The page ends with a link card to **Integrations**.
+
+## Integrations
+
+- A toolbar (search, a category select, and All / Connected / Not connected
+  tabs with counts), then a table: app (logo on a white tile, name,
+  categories), toolkit slug in mono, auth methods as small mono pills, a
+  shield when Composio manages the sign-in, status, and actions. Columns
+  drop away on narrow screens; status moves under the name.
+- **Status**: lime dot "Connected", pulsing amber "Signing in…", red
+  "Reconnect needed", hollow dot "Not connected". No-account apps say "On"
+  or "Off" and use **Turn on** / **Turn off**.
+- **Actions**: **Connect** (secondary) opens Composio's sign-in in a new
+  tab and the row updates by itself; **Disconnect** is a ghost button;
+  **Manage** opens a side sheet with the description, categories, sign-in
+  methods, setup, accounts and tools with their risk.
+- The first 50 rows show, then **Show more**. Loading shows skeleton rows,
+  no matches shows **Clear filters**, and a Composio outage shows the reason
+  with **Try again**.
 - On the web, answers use [Streamdown](https://streamdown.ai), which styles
   itself with Tailwind classes. `app/globals.css` points Tailwind at its files
   with `@source`; if that path is wrong, answers lose their styles silently.

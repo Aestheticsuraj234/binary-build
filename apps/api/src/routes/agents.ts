@@ -1,16 +1,11 @@
 import type {AgentRow, Database} from '@binary/db';
 import {AgentRepository, AgentTemplateRepository} from '@binary/db';
-import type {AgentSummary, FieldErrors} from '@binary/shared';
-import {
-  agentInputSchema,
-  API_ERROR_CODES,
-  getProvider,
-  validate,
-} from '@binary/shared';
+import type {AgentSummary} from '@binary/shared';
+import {agentInputSchema, API_ERROR_CODES, getProvider} from '@binary/shared';
 import type {Context} from 'hono';
 import {Hono} from 'hono';
-import {z} from 'zod';
 
+import {idParam, InvalidInputError, NotFoundError, readJson} from '../errors';
 import {findEncryptedKey} from '../key-store';
 import type {SignedInEnv} from '../middleware/require-user';
 
@@ -28,30 +23,6 @@ export function toAgentSummary(row: AgentRow): AgentSummary {
   };
 }
 
-/**
- * The same answer for "doesn't exist" and "belongs to someone else", so a
- * stranger can't even learn that an agent id is real.
- */
-function notFound(c: Context) {
-  return c.json(
-    {code: API_ERROR_CODES.notFound, message: 'There is no agent here.'},
-    404,
-  );
-}
-
-function invalidInput(
-  c: Context,
-  message: string,
-  fieldErrors: FieldErrors<Record<string, unknown>>,
-) {
-  return c.json(
-    {code: API_ERROR_CODES.invalidInput, message, fieldErrors},
-    400,
-  );
-}
-
-const agentIdSchema = z.uuid();
-
 /** Agent routes, mounted at /api/agents. Every query is scoped to the person. */
 export function agentsRoutes(db: Database) {
   const agents = new AgentRepository(db);
@@ -60,37 +31,28 @@ export function agentsRoutes(db: Database) {
 
   /** Reads and checks a hire/edit form, including that a key exists. */
   async function readAgentInput(c: Context<SignedInEnv>) {
-    const result = validate(
-      agentInputSchema,
-      await c.req.json().catch(() => null),
-    );
-    if (!result.success) {
-      return {response: invalidInput(c, result.firstError, result.errors)};
+    const input = await readJson(c, agentInputSchema);
+    if (!(await findEncryptedKey(db, c.var.user.id, input.provider))) {
+      const message = `Add your ${getProvider(input.provider).name} key on the API keys page first.`;
+      throw new InvalidInputError(
+        message,
+        {provider: message},
+        API_ERROR_CODES.noKey,
+      );
     }
-    const {provider} = result.data;
-    if (!(await findEncryptedKey(db, c.var.user.id, provider))) {
-      const message = `Add your ${getProvider(provider).name} key on the API keys page first.`;
-      return {
-        response: c.json(
-          {
-            code: API_ERROR_CODES.noKey,
-            message,
-            fieldErrors: {provider: message},
-          },
-          400,
-        ),
-      };
-    }
-    return {input: result.data};
+    return input;
   }
 
-  /** Finds one of this person's agents from the URL, or undefined. */
-  async function findAgent(c: Context<SignedInEnv>) {
-    const id = agentIdSchema.safeParse(c.req.param('id'));
-    if (!id.success) {
-      return undefined;
+  /**
+   * One of this person's agents from the URL. Missing and "someone else's"
+   * get the same 404, so a stranger can't even learn an id is real.
+   */
+  async function findAgent(c: Context<SignedInEnv>): Promise<AgentRow> {
+    const row = await agents.findForUser(idParam(c, 'agent'), c.var.user.id);
+    if (!row) {
+      throw new NotFoundError('agent');
     }
-    return agents.findForUser(id.data, c.var.user.id);
+    return row;
   }
 
   routes.get('/', async c => {
@@ -99,11 +61,7 @@ export function agentsRoutes(db: Database) {
   });
 
   routes.post('/', async c => {
-    const {input, response} = await readAgentInput(c);
-    if (!input) {
-      return response;
-    }
-    const {templateId, ...fields} = input;
+    const {templateId, ...fields} = await readAgentInput(c);
     // Only link real templates; a made-up id is dropped, not trusted.
     const template = templateId
       ? await templates.findById(templateId)
@@ -116,30 +74,25 @@ export function agentsRoutes(db: Database) {
   });
 
   routes.get('/:id', async c => {
-    const row = await findAgent(c);
-    return row ? c.json({agent: toAgentSummary(row)}) : notFound(c);
+    return c.json({agent: toAgentSummary(await findAgent(c))});
   });
 
   routes.patch('/:id', async c => {
     const existing = await findAgent(c);
-    if (!existing) {
-      return notFound(c);
-    }
-    const {input, response} = await readAgentInput(c);
-    if (!input) {
-      return response;
-    }
-    const {templateId: _ignored, ...changes} = input;
+    const {templateId: _ignored, ...changes} = await readAgentInput(c);
     const row = await agents.updateForUser(existing.id, c.var.user.id, changes);
-    return row ? c.json({agent: toAgentSummary(row)}) : notFound(c);
+    if (!row) {
+      throw new NotFoundError('agent');
+    }
+    return c.json({agent: toAgentSummary(row)});
   });
 
   /** Fires an agent. Its chats stay, read-only. */
   routes.delete('/:id', async c => {
-    const id = agentIdSchema.safeParse(c.req.param('id'));
-    const fired =
-      id.success && (await agents.fireForUser(id.data, c.var.user.id));
-    return fired ? c.json({ok: true}) : notFound(c);
+    if (!(await agents.fireForUser(idParam(c, 'agent'), c.var.user.id))) {
+      throw new NotFoundError('agent');
+    }
+    return c.json({ok: true});
   });
 
   return routes;

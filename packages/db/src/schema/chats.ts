@@ -1,5 +1,12 @@
 import {sql} from 'drizzle-orm';
-import {index, pgTable, text, timestamp, uuid} from 'drizzle-orm/pg-core';
+import {
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import {agents} from './agents';
 import {user} from './auth';
@@ -43,6 +50,8 @@ export const messages = pgTable(
       .references(() => threads.id, {onDelete: 'cascade'}),
     role: text('role', {enum: ['user', 'assistant']}).notNull(),
     content: text('content').notNull(),
+    /** Tools the agent used while answering (a `ToolCallRecord[]`). */
+    toolCalls: jsonb('tool_calls').$type<unknown[]>().default([]).notNull(),
     // The real clock, not the transaction start, so two messages saved in
     // one transaction still sort in the order they were written.
     createdAt: timestamp('created_at', {withTimezone: true})
