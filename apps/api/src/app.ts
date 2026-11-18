@@ -11,6 +11,7 @@ import {agentTemplatesRoutes} from './routes/agent-templates';
 import {agentsRoutes} from './routes/agents';
 import {keysRoutes} from './routes/keys';
 import {playgroundRoutes} from './routes/playground';
+import {threadsRoutes} from './routes/threads';
 import type {Vault} from './vault';
 
 /** Everything the routes need. Tests pass a fake `buildModel`. */
@@ -50,8 +51,9 @@ export function createApp({
   const engineFor = createEngineFactory({db, vault, buildModel});
   signedIn.route('/keys', keysRoutes({db, vault}));
   signedIn.route('/playground', playgroundRoutes(engineFor));
-  signedIn.route('/agents', agentsRoutes({db, engineFor}));
+  signedIn.route('/agents', agentsRoutes(db));
   signedIn.route('/agent-templates', agentTemplatesRoutes(db));
+  signedIn.route('/threads', threadsRoutes({db, engineFor}));
   app.route('/api', signedIn);
 
   return app;

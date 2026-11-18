@@ -1,6 +1,15 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import 'streamdown/styles.css';
+
+/*
+ * Streamdown styles answers with Tailwind classes, so Tailwind has to scan
+ * its files too. These paths are relative to this file. If they're wrong,
+ * answers render without styles and nothing warns you.
+ */
+@source '../node_modules/streamdown/dist/*.js';
+@source '../node_modules/@streamdown/code/dist/*.js';
 
 /*
  * Binary design tokens. These values must match
@@ -187,8 +196,12 @@
   }
 }
 
+/* Characters hold still, and answers appear without fading in. */
 @media (prefers-reduced-motion: reduce) {
   .character * {
     animation: none !important;
+  }
+  [data-sd-animate] {
+    animation: none;
   }
 }

@@ -2,6 +2,7 @@ import type {
   AgentSummary,
   AgentTemplateSummary,
   ProviderKeyStatus,
+  ThreadSummary,
 } from '@binary/shared';
 import {colors, fontSize, fontWeight, radius, spacing} from '@binary/shared';
 import {useRouter} from 'expo-router';
@@ -21,8 +22,12 @@ import {AgentCard, DesignYourOwnCard, TemplateCard} from '@/components/cards';
 import {CharacterFace} from '@/components/character-face';
 import {Logo} from '@/components/logo';
 import {NeedsKey} from '@/components/needs-key';
+import {ThreadList} from '@/components/thread-list';
 import {useApi} from '@/hooks/use-api';
 import {authClient} from '@/lib/auth-client';
+
+/** How many recent chats the home screen shows before "See all". */
+const RECENT_ON_HOME = 4;
 
 function Section({
   title,
@@ -53,6 +58,8 @@ export default function DiscoverScreen() {
     '/api/agent-templates',
   );
   const keys = useApi<{keys: ProviderKeyStatus[]}>('/api/keys');
+  const threads = useApi<{threads: ThreadSummary[]}>('/api/threads');
+  const recent = threads.data?.threads ?? [];
 
   const firstName = session?.user.name.split(' ')[0] ?? 'there';
   const hasKey = keys.data?.keys.some(key => key.connected) ?? true;
@@ -60,7 +67,12 @@ export default function DiscoverScreen() {
   const isLoading = !agents.data || !templates.data;
 
   async function refresh() {
-    await Promise.all([agents.reload(), templates.reload(), keys.reload()]);
+    await Promise.all([
+      agents.reload(),
+      templates.reload(),
+      keys.reload(),
+      threads.reload(),
+    ]);
   }
 
   return (
@@ -121,8 +133,33 @@ export default function DiscoverScreen() {
           <ActivityIndicator color={colors.accent} style={styles.block} />
         ) : (
           <>
+            {recent.length > 0 && (
+              <Section
+                title="Recent chats"
+                subtitle="Pick up where you left off."
+              >
+                <ThreadList
+                  threads={recent.slice(0, RECENT_ON_HOME)}
+                  onDeleted={() => void threads.reload()}
+                />
+                {recent.length > RECENT_ON_HOME && (
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => router.push('/chats')}
+                    style={styles.seeAll}
+                  >
+                    <Text style={styles.seeAllText}>
+                      See all {recent.length} chats →
+                    </Text>
+                  </Pressable>
+                )}
+              </Section>
+            )}
             {agents.data && agents.data.agents.length > 0 && (
-              <Section title="Your crew" subtitle="Pick someone to talk to.">
+              <Section
+                title="Your crew"
+                subtitle="Tap someone to start a new chat."
+              >
                 {agents.data.agents.map(agent => (
                   <AgentCard key={agent.id} agent={agent} />
                 ))}
@@ -196,4 +233,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   list: {gap: spacing.md, marginTop: spacing.lg},
+  seeAll: {alignSelf: 'flex-start', paddingVertical: spacing.xs},
+  seeAllText: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
 });

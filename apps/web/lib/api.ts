@@ -4,6 +4,8 @@ import type {
   AgentSummary,
   AgentTemplateSummary,
   ProviderKeyStatus,
+  ThreadDetail,
+  ThreadSummary,
 } from '@binary/shared';
 import {headers} from 'next/headers';
 import {redirect} from 'next/navigation';
@@ -68,4 +70,16 @@ export const fetchTemplates = cache(
     );
     return body?.templates ?? [];
   },
+);
+
+/** Recent chats, newest first. */
+export const fetchThreads = cache(async (): Promise<ThreadSummary[]> => {
+  const body = await apiGet<{threads: ThreadSummary[]}>('/api/threads');
+  return body?.threads ?? [];
+});
+
+/** One chat with its messages, or null if it doesn't exist or isn't theirs. */
+export const fetchThread = cache(
+  async (id: string): Promise<ThreadDetail | null> =>
+    apiGet<ThreadDetail>(`/api/threads/${encodeURIComponent(id)}`),
 );

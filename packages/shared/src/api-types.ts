@@ -23,12 +23,55 @@ export type PlaygroundEvent =
   | {type: 'error'; message: string}
   | {type: 'done'};
 
+/** One saved message in a chat. */
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** ISO date. */
+  createdAt: string;
+}
+
+/**
+ * One line of a chat answer, sent as newline-delimited JSON. `start` comes
+ * once your message is saved, `delta` carries the next few words, and the
+ * stream ends with `done` (the answer, now saved) or `error` (nothing saved).
+ */
+export type ChatEvent =
+  | {type: 'start'; model: string; userMessage: ChatMessage}
+  | {type: 'delta'; text: string}
+  | {type: 'error'; message: string}
+  | {type: 'done'; message: ChatMessage};
+
+/** A chat as Recent chats lists it. */
+export interface ThreadSummary {
+  id: string;
+  /** Named after the first message; null until there is one. */
+  title: string | null;
+  agentId: string;
+  agentName: string;
+  /** The character that plays the agent (a `CharacterId`). */
+  avatar: string;
+  /** ISO date of the last message, used to sort newest first. */
+  updatedAt: string;
+}
+
+/** A chat with everything needed to pick it up again. */
+export interface ThreadDetail {
+  thread: ThreadSummary;
+  agent: AgentSummary;
+  /** A fired agent's chats can be read, but not continued. */
+  isFired: boolean;
+  messages: ChatMessage[];
+}
+
 /** Error codes the API returns as `{code, message}` with a 4xx status. */
 export const API_ERROR_CODES = {
   invalidInput: 'INVALID_INPUT',
   unauthorized: 'UNAUTHORIZED',
   noKey: 'NO_KEY',
   notFound: 'NOT_FOUND',
+  readOnly: 'READ_ONLY',
 } as const;
 
 /**

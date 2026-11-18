@@ -2,6 +2,7 @@ export * from './agent-schemas';
 export * from './api-types';
 export * from './auth-schemas';
 export * from './characters';
+export * from './chat-schemas';
 export * from './design-tokens';
 export * from './engine-schemas';
 export * from './providers';

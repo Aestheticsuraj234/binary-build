@@ -93,12 +93,30 @@ export async function signUp(
   return {cookie: cookieFrom(response), userId: user.id};
 }
 
-/** A fake model that streams `reply` in a few pieces. */
-export function fakeModel(reply: string): MockLanguageModelV4 {
+/** Usage numbers for a fake model's `finish` part. */
+const FAKE_USAGE = {
+  inputTokens: {
+    total: 3,
+    noCache: 3,
+    cacheRead: undefined,
+    cacheWrite: undefined,
+  },
+  outputTokens: {total: 5, text: 5, reasoning: undefined},
+};
+
+/**
+ * A fake model that streams `reply` word by word. `delayMs` waits between
+ * words, like a real model typing.
+ */
+export function fakeModel(
+  reply: string,
+  {delayMs = 0}: {delayMs?: number} = {},
+): MockLanguageModelV4 {
   const words = reply.split(/(?<= )/);
   return new MockLanguageModelV4({
     doStream: async () => ({
       stream: simulateReadableStream({
+        chunkDelayInMs: delayMs,
         chunks: [
           {type: 'text-start', id: 'text-1'},
           ...words.map(word => ({
@@ -110,16 +128,30 @@ export function fakeModel(reply: string): MockLanguageModelV4 {
           {
             type: 'finish',
             finishReason: {unified: 'stop', raw: undefined},
-            usage: {
-              inputTokens: {
-                total: 3,
-                noCache: 3,
-                cacheRead: undefined,
-                cacheWrite: undefined,
-              },
-              outputTokens: {total: 5, text: 5, reasoning: undefined},
-            },
+            usage: FAKE_USAGE,
           },
+        ],
+      }),
+    }),
+  });
+}
+
+/** A fake model that writes `partial`, then the provider fails. */
+export function brokenModel(
+  partial: string,
+  error: Error,
+): MockLanguageModelV4 {
+  return new MockLanguageModelV4({
+    doStream: async () => ({
+      stream: simulateReadableStream({
+        chunks: [
+          {type: 'text-start', id: 'text-1'},
+          ...partial.split(/(?<= )/).map(word => ({
+            type: 'text-delta' as const,
+            id: 'text-1',
+            delta: word,
+          })),
+          {type: 'error', error},
         ],
       }),
     }),
@@ -135,7 +167,7 @@ export function failingModel(error: Error): MockLanguageModelV4 {
   });
 }
 
-/** Reads a Playground response into its list of events. */
+/** Reads a streamed response into its list of events. */
 export async function readEvents(response: Response): Promise<unknown[]> {
   const text = await response.text();
   return text

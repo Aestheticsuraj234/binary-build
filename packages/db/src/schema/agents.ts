@@ -35,6 +35,11 @@ export const agents = pgTable(
     instructions: text('instructions').notNull().default(''),
     provider: text('provider', {enum: ['openai', 'anthropic', 'google']}),
     model: text('model'),
+    /**
+     * Set when the agent is fired. A fired agent leaves the crew, but its
+     * chats can still be read, so the row stays.
+     */
+    firedAt: timestamp('fired_at', {withTimezone: true}),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

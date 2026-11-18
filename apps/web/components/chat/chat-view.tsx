@@ -1,0 +1,495 @@
+'use client';
+
+import type {
+  AgentSummary,
+  ChatEvent,
+  ChatMessage,
+  Mood,
+  ThreadSummary,
+} from '@binary/shared';
+import {characterOf, CHAT_MESSAGE_MAX_LENGTH, readEvents} from '@binary/shared';
+import {cn} from 'cn';
+import {ArrowUpIcon, PencilIcon, PlusIcon, Trash2Icon} from 'lucide-react';
+import Link from 'next/link';
+import {usePathname, useRouter} from 'next/navigation';
+import type {FormEvent, KeyboardEvent} from 'react';
+import {useEffect, useRef, useState} from 'react';
+
+import {ModelBadge} from '@/components/agents/cards';
+import {CharacterFace} from '@/components/characters/character-face';
+import {Markdown} from '@/components/chat/markdown';
+import {Button, buttonVariants} from '@/components/ui/button';
+import {Textarea} from '@/components/ui/textarea';
+import {announceChatsChanged} from '@/lib/chat-events';
+import {ApiError, callApi} from '@/lib/client-api';
+
+/** One message on screen. An `error` means the answer wasn't saved. */
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  error?: string;
+  isStreaming?: boolean;
+}
+
+/** What the character says on the stage for each mood. */
+function stageLine(mood: Mood, name: string, greeting: string): string {
+  switch (mood) {
+    case 'thinking':
+      return `${name} is thinking…`;
+    case 'talking':
+      return `${name} is answering…`;
+    case 'happy':
+      return 'Done! Anything else?';
+    default:
+      return greeting;
+  }
+}
+
+/** The API's message for a failed request, or a fallback. */
+async function errorMessageOf(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as {
+    message?: string;
+  } | null;
+  return body?.message ?? 'Something went wrong. Please try again.';
+}
+
+interface ChatViewProps {
+  agent: AgentSummary;
+  /** False when the agent's provider has no saved key. */
+  hasKey: boolean;
+  /** The saved chat, or null for a new one. */
+  thread: ThreadSummary | null;
+  initialMessages: ChatMessage[];
+  /** A fired agent's chat can be read but not continued. */
+  isFired: boolean;
+}
+
+/**
+ * Talk to an agent beside a stage where its character reacts: thinking
+ * while it waits, talking while the answer streams in, happy when it's
+ * saved. A new chat is created with the first message.
+ */
+export function ChatView({
+  agent,
+  hasKey,
+  thread,
+  initialMessages,
+  isFired,
+}: ChatViewProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const character = characterOf(agent.avatar);
+  const [threadId, setThreadId] = useState(thread?.id ?? null);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [draft, setDraft] = useState('');
+  const [mood, setMood] = useState<Mood>('idle');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const nextLocalId = useRef(1);
+  const controllerRef = useRef<AbortController>(null);
+  const happyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const endRef = useRef<HTMLDivElement>(null);
+  // Follow new text only while the person is at the bottom of the chat.
+  const followRef = useRef(true);
+  const isBusy = mood === 'thinking' || mood === 'talking';
+  const canSend = hasKey && !isFired;
+
+  useEffect(() => {
+    if (followRef.current) {
+      endRef.current?.scrollIntoView({block: 'end'});
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const fromBottom =
+        document.documentElement.scrollHeight -
+        (window.scrollY + window.innerHeight);
+      followRef.current = fromBottom < 120;
+    };
+    window.addEventListener('scroll', onScroll, {passive: true});
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Leaving stops reading the answer here. The server still finishes it
+  // and saves it, so it's there when the person comes back.
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort();
+      clearTimeout(happyTimer.current);
+    },
+    [],
+  );
+
+  // Going Back to a chat that started here can show this page as it was
+  // before the chat existed. Reload it so the saved messages appear.
+  useEffect(() => {
+    if (
+      !thread &&
+      pathname.startsWith('/chats/') &&
+      pathname !== `/chats/${threadId}`
+    ) {
+      router.refresh();
+    }
+  }, [thread, threadId, pathname, router]);
+
+  function updateMessage(id: string, change: (m: Message) => Message) {
+    setMessages(current => current.map(m => (m.id === id ? change(m) : m)));
+  }
+
+  function localId() {
+    return `local-${nextLocalId.current++}`;
+  }
+
+  /** Creates the chat on the first message and gives it its own address. */
+  async function ensureThread(): Promise<string> {
+    if (threadId) {
+      return threadId;
+    }
+    const {thread: created} = await callApi<{thread: ThreadSummary}>(
+      '/api/threads',
+      {method: 'POST', body: {agentId: agent.id}},
+    );
+    setThreadId(created.id);
+    // Change the address without leaving the page, so this chat keeps
+    // streaming. A reload now opens the saved chat.
+    window.history.replaceState(null, '', `/chats/${created.id}`);
+    return created.id;
+  }
+
+  async function send(text: string) {
+    const message = text.trim();
+    if (!message || isBusy || !canSend) {
+      return;
+    }
+    const questionId = localId();
+    const answerId = localId();
+    setMessages(current => [
+      ...current,
+      {id: questionId, role: 'user', content: message},
+      {id: answerId, role: 'assistant', content: '', isStreaming: true},
+    ]);
+    setDraft('');
+    followRef.current = true;
+    clearTimeout(happyTimer.current);
+    setMood('thinking');
+
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    let failed = false;
+    const fail = (reason: string) => {
+      failed = true;
+      updateMessage(answerId, m => ({...m, error: reason, isStreaming: false}));
+    };
+
+    try {
+      const id = await ensureThread();
+      const response = await fetch(`/api/threads/${id}/messages`, {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({message}),
+        signal: controller.signal,
+      });
+      if (!response.ok || !response.body) {
+        fail(await errorMessageOf(response));
+      } else {
+        for await (const event of readEvents<ChatEvent>(response.body)) {
+          if (event.type === 'start') {
+            updateMessage(questionId, m => ({...m, id: event.userMessage.id}));
+            // The chat now has a title, so Recent chats can show it.
+            announceChatsChanged();
+          } else if (event.type === 'delta') {
+            setMood('talking');
+            updateMessage(answerId, m => ({
+              ...m,
+              content: m.content + event.text,
+            }));
+          } else if (event.type === 'error') {
+            fail(event.message);
+          } else {
+            updateMessage(answerId, () => ({
+              ...event.message,
+              isStreaming: false,
+            }));
+            announceChatsChanged();
+          }
+        }
+      }
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      fail(
+        error instanceof ApiError
+          ? error.message
+          : 'Could not reach Binary. Is the API running?',
+      );
+    }
+
+    // A stream that ended without `done` didn't finish.
+    updateMessage(answerId, m =>
+      m.isStreaming
+        ? {...m, isStreaming: false, error: 'The answer stopped part-way.'}
+        : m,
+    );
+    if (failed) {
+      setMood('idle');
+    } else {
+      setMood('happy');
+      happyTimer.current = setTimeout(() => setMood('idle'), 2500);
+    }
+  }
+
+  async function deleteChat() {
+    if (
+      !threadId ||
+      !window.confirm('Delete this chat? This can’t be undone.')
+    ) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await callApi(`/api/threads/${threadId}`, {method: 'DELETE'});
+      announceChatsChanged();
+      router.push(isFired ? '/' : `/agents/${agent.id}`);
+    } catch (error) {
+      setIsDeleting(false);
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void send(draft);
+  }
+
+  /** Enter sends; Shift+Enter starts a new line. */
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
+      void send(draft);
+    }
+  }
+
+  return (
+    <div className="grid min-h-[calc(100dvh-3.5rem)] grid-cols-1 md:min-h-dvh lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+      {/* The stage */}
+      <aside
+        className="flex flex-col border-b lg:sticky lg:top-0 lg:h-dvh lg:border-r lg:border-b-0"
+        style={{backgroundColor: character.tint}}
+      >
+        <div className="flex flex-wrap items-center gap-2 p-4">
+          {!isFired && (
+            <>
+              <Link
+                href={`/agents/${agent.id}`}
+                className={buttonVariants({variant: 'secondary', size: 'sm'})}
+              >
+                <PlusIcon aria-hidden />
+                New chat
+              </Link>
+              <Link
+                href={`/agents/${agent.id}/edit`}
+                className={buttonVariants({variant: 'secondary', size: 'sm'})}
+              >
+                <PencilIcon aria-hidden />
+                Edit
+              </Link>
+            </>
+          )}
+          {threadId && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={isDeleting || isBusy}
+              onClick={() => void deleteChat()}
+              className="ml-auto"
+            >
+              <Trash2Icon aria-hidden />
+              Delete chat
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-1 flex-row items-center gap-4 px-5 pb-5 lg:flex-col lg:justify-center lg:gap-6 lg:pb-16">
+          <CharacterFace
+            character={character.id}
+            mood={mood}
+            size={200}
+            className="size-24 shrink-0 sm:size-32 lg:size-[200px]"
+          />
+          <div className="min-w-0 lg:text-center">
+            <h1 className="text-xl font-semibold lg:text-2xl">{agent.name}</h1>
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+              {agent.role}
+            </p>
+            <ModelBadge
+              provider={agent.provider}
+              model={agent.model}
+              className="mt-3"
+            />
+            <p
+              aria-live="polite"
+              className="mt-4 hidden rounded-xl border bg-background/80 px-4 py-3 text-sm sm:block"
+            >
+              {isFired
+                ? `${agent.name} has left the crew.`
+                : stageLine(mood, agent.name, character.greeting)}
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* The conversation */}
+      <section
+        aria-label={`Chat with ${agent.name}`}
+        className="flex min-w-0 flex-col"
+      >
+        <div className="flex-1 px-4 py-6 sm:px-8">
+          {isFired ? (
+            <p className="mx-auto mb-6 max-w-2xl rounded-md border bg-card p-3 text-sm text-muted-foreground">
+              {agent.name} was fired, so this chat is read-only.
+            </p>
+          ) : (
+            !hasKey && (
+              <p
+                role="alert"
+                className="mx-auto mb-6 max-w-2xl rounded-md border border-destructive/40 bg-danger-surface p-3 text-sm text-destructive"
+              >
+                {agent.name} has no key to think with.{' '}
+                <Link href="/keys" className="font-medium underline">
+                  Add a key
+                </Link>{' '}
+                or{' '}
+                <Link
+                  href={`/agents/${agent.id}/edit`}
+                  className="font-medium underline"
+                >
+                  pick another provider
+                </Link>
+                .
+              </p>
+            )
+          )}
+
+          {messages.length === 0 ? (
+            <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 pt-4 sm:pt-12">
+              <p className="text-lg">
+                Hi, I&apos;m {agent.name}. {character.greeting}
+              </p>
+              <p className="text-sm text-muted-foreground">Try one of these:</p>
+              <div className="flex flex-wrap gap-2">
+                {character.starters.map(starter => (
+                  <button
+                    key={starter}
+                    type="button"
+                    disabled={!canSend}
+                    onClick={() => void send(starter)}
+                    className="rounded-full border border-input px-3.5 py-2 text-left text-sm transition-colors hover:bg-secondary disabled:opacity-50"
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ol
+              aria-label="Messages"
+              className="mx-auto flex max-w-2xl flex-col gap-6"
+            >
+              {messages.map(message => (
+                <li
+                  key={message.id}
+                  className={cn(
+                    'flex gap-3',
+                    message.role === 'user' && 'justify-end',
+                  )}
+                >
+                  {message.role === 'user' ? (
+                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-secondary px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  ) : (
+                    <>
+                      <CharacterFace
+                        character={character.id}
+                        size={32}
+                        animated={false}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1 pt-1">
+                        {message.content ? (
+                          <Markdown isStreaming={message.isStreaming}>
+                            {message.content}
+                          </Markdown>
+                        ) : (
+                          !message.error && (
+                            <p className="text-sm text-muted-foreground">
+                              Thinking…
+                            </p>
+                          )
+                        )}
+                        {message.error && (
+                          <p
+                            role="alert"
+                            className="mt-2 rounded-md border border-destructive/40 bg-danger-surface p-3 text-sm text-destructive"
+                          >
+                            {message.error}
+                            {message.content && (
+                              <span className="mt-1 block text-xs text-muted-foreground">
+                                What arrived is shown above, but it wasn&apos;t
+                                saved.
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          {/* Clears the composer when scrolled into view. */}
+          <div ref={endRef} className="scroll-mb-28" />
+        </div>
+
+        {!isFired && (
+          <form
+            onSubmit={handleSubmit}
+            className="sticky bottom-0 border-t bg-background/95 px-4 py-4 backdrop-blur sm:px-8"
+          >
+            <div className="mx-auto flex max-w-2xl items-end gap-2">
+              <label htmlFor="chat-message" className="sr-only">
+                Message {agent.name}
+              </label>
+              <Textarea
+                id="chat-message"
+                value={draft}
+                onChange={event => setDraft(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Give ${agent.name} a task…`}
+                rows={1}
+                maxLength={CHAT_MESSAGE_MAX_LENGTH}
+                disabled={!canSend}
+                className="max-h-40 min-h-11 resize-none"
+              />
+              <Button
+                type="submit"
+                size="icon-lg"
+                aria-label="Send"
+                disabled={!draft.trim() || isBusy || !canSend}
+                className="size-11 shrink-0"
+              >
+                <ArrowUpIcon aria-hidden />
+              </Button>
+            </div>
+          </form>
+        )}
+      </section>
+    </div>
+  );
+}

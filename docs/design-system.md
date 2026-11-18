@@ -107,16 +107,40 @@ The web uses Geist; mobile uses the system font. Sizes in pixels:
 Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 
 - **Sidebar** (17rem, `border` on the right) on screens 768px and wider. Top
-  to bottom: the logo (a lime "01" tile and "Binary"), a dashed **Hire a
-  character** button, the main links (Discover, Playground, API keys; the
-  current one gets a `surfaceRaised` background), **Your crew** (each agent's
-  face, name and job), and the user card (initials, name, email, sign out).
+  to bottom: the logo (a lime "01" tile and "Binary"), the main links
+  (Discover, Playground, API keys; the current one gets a `surfaceRaised`
+  background), a lime **New chat** button, then one scrolling list with
+  **Recent chats** (face and title, newest first; a bin button shows on hover
+  or focus, and always on touch screens) and **Your crew** (each agent's face,
+  name and job; the `+` hires someone), and the user card (initials, name,
+  email, sign out).
+- **New chat** talks to whoever the open page is about, or else the first
+  crew member.
 - **Phones** get a 56px top bar with the logo and a menu button. The menu
   slides the same sidebar in from the left.
 - **Width**: `max-w-3xl` for forms and lists, `max-w-6xl` for grids like
   Discover and the Playground.
 - To add a section, add a folder under `app/(app)/` and a link in
   `components/nav-links.tsx`.
+
+## Chat
+
+- A conversation is a character **stage** (on the character's `tint`, with
+  New chat, Edit and Delete chat on top) beside the messages. On narrow
+  screens the stage sits above them.
+- Your messages are `surfaceRaised` bubbles on the right. Answers sit on the
+  page with a small, still face beside them, rendered as **Markdown**:
+  headings, lists, tables, quotes and code blocks highlighted with the GitHub
+  Dark theme. Half-written Markdown is closed while it streams, so `**` or an
+  open code fence never shows.
+- Links in answers are lime and underlined, and ask "Leave Binary?" before
+  opening.
+- A failed answer keeps the words that arrived, with the reason in a
+  `dangerSurface` box below and a note that it wasn't saved.
+- A fired agent's chat shows a neutral note, and no composer.
+- On the web, answers use [Streamdown](https://streamdown.ai), which styles
+  itself with Tailwind classes. `app/globals.css` points Tailwind at its files
+  with `@source`; if that path is wrong, answers lose their styles silently.
 
 ## Characters
 
@@ -136,6 +160,13 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 The Expo app uses the same tokens from `@binary/shared`. Inner screens get a
 dark native header with a back button; buttons are 48px tall; choices like
 provider and model are pill buttons rather than drop-downs.
+
+- Home shows the newest **Recent chats** first (bin button or long press to
+  delete; "See all" when there are more), then Your crew and the cast.
+- A chat's header has **New** and a **•••** menu (Edit agent, Delete chat).
+- Answers render Markdown with `marked`, `remend` for half-written text and
+  `lowlight` for code colours, close to the web's look. Wide tables and code
+  scroll sideways.
 
 ## Accessibility
 

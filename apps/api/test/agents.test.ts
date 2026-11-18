@@ -3,31 +3,10 @@ import type {AgentSummary} from '@binary/shared';
 import {AGENT_MESSAGES} from '@binary/shared';
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest';
 
-import type {ModelBuilder} from '../src/engine/factory';
 import {TEMPLATES} from '../src/seed';
-import {
-  callApi,
-  createTestApp,
-  fakeModel,
-  readEvents,
-  resetDatabase,
-  signUp,
-} from './helpers';
+import {callApi, createTestApp, resetDatabase, signUp} from './helpers';
 
-/** What a model is sent: the system prompt and the conversation. */
-type ModelPrompt = ReturnType<
-  typeof fakeModel
->['doStreamCalls'][number]['prompt'];
-
-/** Every fake model handed out, so tests can read what each was sent. */
-const models: Array<ReturnType<typeof fakeModel>> = [];
-const buildModel: ModelBuilder = () => {
-  const model = fakeModel('Found three sources.');
-  models.push(model);
-  return model;
-};
-
-const {app, db} = createTestApp({buildModel});
+const {app, db} = createTestApp();
 
 const nova = {
   name: 'Ada',
@@ -39,15 +18,6 @@ const nova = {
 };
 
 let cookie: string;
-
-/** The system prompt the most recent fake model received. */
-function lastSystemPrompt(): string {
-  const prompt: ModelPrompt | undefined = models
-    .at(-1)
-    ?.doStreamCalls.at(-1)?.prompt;
-  const system = prompt?.find(message => message.role === 'system');
-  return typeof system?.content === 'string' ? system.content : '';
-}
 
 async function addKey(provider = 'anthropic', as = cookie) {
   await callApi(app, `/api/keys/${provider}`, {
@@ -66,14 +36,6 @@ async function hireAgent(body: object = nova): Promise<AgentSummary> {
   return ((await response.json()) as {agent: AgentSummary}).agent;
 }
 
-function reply(id: string, message: string, history: object[] = []) {
-  return callApi(app, `/api/agents/${id}/reply`, {
-    method: 'POST',
-    body: {message, history},
-    cookie,
-  });
-}
-
 beforeAll(async () => {
   const templates = new AgentTemplateRepository(db);
   for (const template of TEMPLATES) {
@@ -83,7 +45,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase(db);
-  models.length = 0;
   ({cookie} = await signUp(app));
   await addKey();
 });
@@ -189,15 +150,16 @@ describe('editing and firing', () => {
 
   it('fires an agent, removing it from the crew', async () => {
     const agent = await hireAgent();
+    const fire = () =>
+      callApi(app, `/api/agents/${agent.id}`, {method: 'DELETE', cookie});
 
-    const response = await callApi(app, `/api/agents/${agent.id}`, {
-      method: 'DELETE',
-      cookie,
-    });
-
-    expect(response.status).toBe(200);
+    expect((await fire()).status).toBe(200);
     const list = await callApi(app, '/api/agents', {cookie});
     expect(await list.json()).toEqual({agents: []});
+    // Gone for editing too, and can't be fired twice.
+    const page = await callApi(app, `/api/agents/${agent.id}`, {cookie});
+    expect(page.status).toBe(404);
+    expect((await fire()).status).toBe(404);
   });
 });
 
@@ -218,7 +180,6 @@ describe('ownership', () => {
       await asGrace('GET'),
       await asGrace('PATCH', '', nova),
       await asGrace('DELETE'),
-      await asGrace('POST', '/reply', {message: 'Hi'}),
     ]) {
       expect(response.status).toBe(404);
       expect(await response.json()).toEqual({
@@ -244,88 +205,6 @@ describe('ownership', () => {
     const response = await callApi(app, '/api/agents');
 
     expect(response.status).toBe(401);
-  });
-});
-
-describe('replies', () => {
-  it('answers in character, streaming the reply', async () => {
-    const agent = await hireAgent();
-
-    const events = await readEvents(await reply(agent.id, 'Research pgvector'));
-
-    expect(events[0]).toEqual({type: 'start', model: 'claude-sonnet-5-5'});
-    expect(events.at(-1)).toEqual({type: 'done'});
-    const text = events
-      .map(event => (event as {text?: string}).text ?? '')
-      .join('');
-    expect(text).toBe('Found three sources.');
-    expect(lastSystemPrompt()).toContain('You are Ada');
-    expect(lastSystemPrompt()).toContain('Curious, precise');
-  });
-
-  it('sends the earlier turns along with the new message', async () => {
-    const agent = await hireAgent();
-
-    await (
-      await reply(agent.id, 'And the third?', [
-        {role: 'user', content: 'Name two sources.'},
-        {role: 'assistant', content: 'A and B.'},
-      ])
-    ).text();
-
-    const prompt: ModelPrompt = models.at(-1)!.doStreamCalls.at(-1)!.prompt;
-    expect(prompt.map(message => message.role)).toEqual([
-      'system',
-      'user',
-      'assistant',
-      'user',
-    ]);
-  });
-
-  it('uses edits on the very next answer', async () => {
-    const agent = await hireAgent();
-    await (await reply(agent.id, 'Hi')).text();
-    expect(lastSystemPrompt()).toContain('You are Ada');
-
-    await callApi(app, `/api/agents/${agent.id}`, {
-      method: 'PATCH',
-      body: {
-        ...nova,
-        name: 'Sparky',
-        avatar: 'ember',
-        instructions: 'Always answer in exactly one sentence.',
-      },
-      cookie,
-    });
-    await (await reply(agent.id, 'Hi again')).text();
-
-    expect(lastSystemPrompt()).toContain('You are Sparky');
-    expect(lastSystemPrompt()).toContain('Bold and energetic.');
-    expect(lastSystemPrompt()).toContain(
-      'Always answer in exactly one sentence.',
-    );
-  });
-
-  it('says so when the key was removed after hiring', async () => {
-    const agent = await hireAgent();
-    await callApi(app, '/api/keys/anthropic', {method: 'DELETE', cookie});
-
-    const response = await reply(agent.id, 'Hi');
-
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({
-      code: 'NO_KEY',
-      message:
-        'Ada thinks with Anthropic. Add your Anthropic key on the API keys page.',
-    });
-  });
-
-  it('rejects an empty message', async () => {
-    const agent = await hireAgent();
-
-    const response = await reply(agent.id, '  ');
-
-    expect(response.status).toBe(400);
   });
 });
 

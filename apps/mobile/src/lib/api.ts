@@ -24,7 +24,7 @@ export class ApiError extends Error {
  */
 export async function apiFetch(
   path: string,
-  options: {method?: string; body?: unknown} = {},
+  options: {method?: string; body?: unknown; signal?: AbortSignal} = {},
 ) {
   const headers: Record<string, string> = {
     cookie: await authClient.getCookie(),
@@ -38,8 +38,12 @@ export async function apiFetch(
       headers,
       body:
         options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
     });
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw error;
+    }
     throw new ApiError('Could not reach Binary. Is the API running?', 0);
   }
 }

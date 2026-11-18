@@ -8,37 +8,37 @@ export interface StreamRequest {
   prompt: string;
   system?: string;
   history?: ChatTurn[];
-  signal: AbortSignal;
+  signal?: AbortSignal;
+}
+
+/** The safe-to-show message for anything an engine threw. */
+export function engineErrorMessage(error: unknown): string {
+  return error instanceof EngineError ? error.message : 'Something went wrong.';
 }
 
 /**
- * Streams an engine's answer as newline-delimited JSON: a `start` line, then
- * `text` lines as the model writes, then `done` (or `error`).
+ * A response that streams newline-delimited JSON: one event per line, sent
+ * the moment `produce` calls `send`. If the person goes away, `send` quietly
+ * does nothing and `produce` still runs to the end.
  */
-export function streamAnswer(engine: Engine, request: StreamRequest): Response {
+export function ndjsonResponse<Event>(
+  produce: (send: (event: Event) => void) => Promise<void>,
+): Response {
   const encoder = new TextEncoder();
   let isClosed = false;
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: PlaygroundEvent) => {
+      const send = (event: Event) => {
         if (!isClosed) {
           controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
         }
       };
-
-      send({type: 'start', model: engine.model});
       try {
-        for await (const text of engine.stream(request)) {
-          send({type: 'text', text});
-        }
-        send({type: 'done'});
+        await produce(send);
       } catch (error) {
-        const message =
-          error instanceof EngineError
-            ? error.message
-            : 'Something went wrong.';
-        send({type: 'error', message});
+        // `produce` sends its own errors; this is only for the unexpected.
+        console.error('[stream] failed:', error);
       }
       if (!isClosed) {
         isClosed = true;
@@ -56,5 +56,23 @@ export function streamAnswer(engine: Engine, request: StreamRequest): Response {
       'content-type': 'application/x-ndjson; charset=utf-8',
       'cache-control': 'no-store',
     },
+  });
+}
+
+/**
+ * Streams an engine's answer for the Playground: a `start` line, then
+ * `text` lines as the model writes, then `done` (or `error`).
+ */
+export function streamAnswer(engine: Engine, request: StreamRequest): Response {
+  return ndjsonResponse<PlaygroundEvent>(async send => {
+    send({type: 'start', model: engine.model});
+    try {
+      for await (const text of engine.stream(request)) {
+        send({type: 'text', text});
+      }
+      send({type: 'done'});
+    } catch (error) {
+      send({type: 'error', message: engineErrorMessage(error)});
+    }
   });
 }

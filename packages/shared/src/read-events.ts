@@ -3,11 +3,12 @@ import type {PlaygroundEvent} from './api-types';
 /**
  * Reads a newline-delimited JSON stream from the API one event at a time,
  * as the lines arrive. A line can be split across network chunks, so text
- * is buffered until a full line is available.
+ * is buffered until a full line is available. Pass the event type you
+ * expect, e.g. `readEvents<ChatEvent>(body)`.
  */
-export async function* readEvents(
+export async function* readEvents<Event = PlaygroundEvent>(
   body: ReadableStream<Uint8Array>,
-): AsyncGenerator<PlaygroundEvent> {
+): AsyncGenerator<Event> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffered = '';
@@ -25,14 +26,14 @@ export async function* readEvents(
         const line = buffered.slice(0, newline).trim();
         buffered = buffered.slice(newline + 1);
         if (line) {
-          yield JSON.parse(line) as PlaygroundEvent;
+          yield JSON.parse(line) as Event;
         }
         newline = buffered.indexOf('\n');
       }
     }
     const last = buffered.trim();
     if (last) {
-      yield JSON.parse(last) as PlaygroundEvent;
+      yield JSON.parse(last) as Event;
     }
   } finally {
     reader.releaseLock();

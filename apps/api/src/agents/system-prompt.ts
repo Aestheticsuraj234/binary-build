@@ -29,6 +29,8 @@ export function buildSystemPrompt(agent: AgentProfile): string {
   lines.push(
     '',
     'Keep answers clear and reasonably short unless asked for more. ' +
+      'Write in Markdown: use headings, lists, tables and fenced code ' +
+      'blocks with a language when they make an answer easier to read. ' +
       "You can't use tools or browse yet: if a task needs that, say so " +
       'and help as far as you can with what you know.',
   );

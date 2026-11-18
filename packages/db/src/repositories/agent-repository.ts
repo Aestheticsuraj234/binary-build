@@ -1,4 +1,4 @@
-import {and, asc, eq} from 'drizzle-orm';
+import {and, asc, eq, isNull} from 'drizzle-orm';
 
 import type {Database} from '../index';
 import type {AgentRow, NewAgentRow} from '../schema/agents';
@@ -13,7 +13,8 @@ export type AgentChanges = Pick<
 /**
  * Queries for the `agents` table. Every method takes the owner's id and
  * only ever touches that person's agents, so one person can never read or
- * change another's.
+ * change another's. Fired agents are left out: they only live on in their
+ * old chats.
  */
 export class AgentRepository {
   constructor(private readonly db: Database) {}
@@ -23,16 +24,16 @@ export class AgentRepository {
     return this.db
       .select()
       .from(agents)
-      .where(eq(agents.userId, userId))
+      .where(and(eq(agents.userId, userId), isNull(agents.firedAt)))
       .orderBy(asc(agents.createdAt));
   }
 
-  /** One agent, or undefined if it doesn't exist or isn't theirs. */
+  /** One agent, or undefined if it doesn't exist, isn't theirs or was fired. */
   async findForUser(id: string, userId: string): Promise<AgentRow | undefined> {
     const [row] = await this.db
       .select()
       .from(agents)
-      .where(and(eq(agents.id, id), eq(agents.userId, userId)))
+      .where(this.isTheirs(id, userId))
       .limit(1);
     return row;
   }
@@ -57,17 +58,30 @@ export class AgentRepository {
     const [row] = await this.db
       .update(agents)
       .set(changes)
-      .where(and(eq(agents.id, id), eq(agents.userId, userId)))
+      .where(this.isTheirs(id, userId))
       .returning();
     return row;
   }
 
-  /** Fires an agent. Returns false if the agent isn't theirs. */
-  async deleteForUser(id: string, userId: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(agents)
-      .where(and(eq(agents.id, id), eq(agents.userId, userId)))
+  /**
+   * Fires an agent: it leaves the crew and its chats become read-only.
+   * Returns false if the agent isn't theirs or was already fired.
+   */
+  async fireForUser(id: string, userId: string): Promise<boolean> {
+    const fired = await this.db
+      .update(agents)
+      .set({firedAt: new Date()})
+      .where(this.isTheirs(id, userId))
       .returning({id: agents.id});
-    return deleted.length > 0;
+    return fired.length > 0;
+  }
+
+  /** Matches one agent of this person's that is still on the crew. */
+  private isTheirs(id: string, userId: string) {
+    return and(
+      eq(agents.id, id),
+      eq(agents.userId, userId),
+      isNull(agents.firedAt),
+    );
   }
 }

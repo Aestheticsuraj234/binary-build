@@ -129,9 +129,35 @@ Playground ──one request per provider──▶ /api/playground
 - Every reply rebuilds the **system prompt** from the agent's job,
   instructions and its character's personality
   (`apps/api/src/agents/system-prompt.ts`), so edits apply to the next answer.
-- Every query is scoped to the signed-in person. Someone else's agent gets
-  the same 404 as one that doesn't exist.
-- Chats aren't saved yet: **New chat** or a reload starts over.
+- Every query is scoped to the signed-in person. Someone else's agent or chat
+  gets the same 404 as one that doesn't exist.
+- **Firing** an agent takes it off your crew, but keeps its chats to read.
+
+## How chats work
+
+Every conversation is a **thread** of **messages** in Postgres, named after
+its first message. Recent chats lists them newest first.
+
+What happens when you send a message
+(`POST /api/threads/:id/messages`, in `apps/api/src/routes/threads.ts`):
+
+1. **Checks first.** The chat must be yours (404), the message valid (400),
+   the agent still on the crew and its key saved (409). These come back as
+   normal JSON errors, before any streaming starts.
+2. **Your message is saved**, so it's never lost.
+3. **The model reads the last 20 messages** plus the system prompt. Older
+   messages stay in the chat but aren't sent, so a long chat costs no more
+   than a short one.
+4. **The answer streams** as newline-delimited JSON over `fetch`: `start`,
+   then a `delta` line for every few words, then `done` (the answer, now
+   saved) or `error` (nothing saved; the words that arrived stay on screen
+   with the reason). NDJSON over `fetch` works with POST bodies and cookies
+   on both the web and the phone, which `EventSource` doesn't.
+5. If you close the tab part-way, the server still finishes the answer and
+   saves it.
+
+Only the tab that sent the message streams. Other tabs and devices see new
+messages after a reload.
 
 ## Code style
 

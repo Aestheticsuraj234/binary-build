@@ -1,6 +1,7 @@
 import {PlusIcon} from 'lucide-react';
 import {headers} from 'next/headers';
 import Link from 'next/link';
+import type {ReactNode} from 'react';
 import {Suspense} from 'react';
 
 import {CharacterFace} from '@/components/characters/character-face';
@@ -8,7 +9,8 @@ import {Logo} from '@/components/logo';
 import {NavLinkList, NavLinks} from '@/components/nav-links';
 import {SignOutButton} from '@/components/sign-out-button';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchAgents} from '@/lib/api';
+import {RecentChats} from '@/components/shell/recent-chats';
+import {fetchAgents, fetchThreads} from '@/lib/api';
 import {getSessionUser} from '@/lib/session';
 
 /** "Ada Lovelace" becomes "AL". Falls back to the email's first letters. */
@@ -59,6 +61,26 @@ async function CrewList() {
   );
 }
 
+/** "New chat", then Recent chats and the crew in one scrolling list. */
+async function Conversations({
+  idPrefix,
+  children,
+}: {
+  idPrefix: string;
+  children: ReactNode;
+}) {
+  const [threads, agents] = await Promise.all([fetchThreads(), fetchAgents()]);
+  return (
+    <RecentChats
+      initialThreads={threads}
+      fallbackAgentId={agents[0]?.id ?? null}
+      idPrefix={idPrefix}
+    >
+      {children}
+    </RecentChats>
+  );
+}
+
 /** The signed-in person, with a sign-out button. */
 async function UserCard() {
   const user = await getSessionUser((await headers()).get('cookie'));
@@ -95,38 +117,41 @@ export function SidebarContent({idPrefix}: {idPrefix: string}) {
       <Link href="/" aria-label="Binary home" className="px-1 pt-1">
         <Logo />
       </Link>
-      <Link
-        href="/agents/new"
-        className="flex h-10 items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm font-medium transition-colors hover:bg-secondary/60"
-      >
-        <PlusIcon aria-hidden className="size-4" />
-        Hire a character
-      </Link>
       {/* The URL is only known at request time, so the highlight streams in. */}
       <Suspense fallback={<NavLinkList activePath={null} />}>
         <NavLinks />
       </Suspense>
-      <section
-        aria-labelledby={crewHeadingId}
-        className="min-h-0 flex-1 overflow-y-auto"
+      <Suspense
+        fallback={
+          <div className="flex flex-1 flex-col gap-3">
+            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+          </div>
+        }
       >
-        <h2
-          id={crewHeadingId}
-          className="mb-2 px-3 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-        >
-          Your crew
-        </h2>
-        <Suspense
-          fallback={
-            <div className="flex flex-col gap-2 px-2">
-              <Skeleton className="h-10" />
-              <Skeleton className="h-10" />
+        <Conversations idPrefix={idPrefix}>
+          <section aria-labelledby={crewHeadingId}>
+            <div className="mb-2 flex items-center justify-between pr-1 pl-3">
+              <h2
+                id={crewHeadingId}
+                className="text-xs font-medium tracking-wider text-muted-foreground uppercase"
+              >
+                Your crew
+              </h2>
+              <Link
+                href="/agents/new"
+                aria-label="Hire a character"
+                title="Hire a character"
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+              >
+                <PlusIcon aria-hidden className="size-4" />
+              </Link>
             </div>
-          }
-        >
-          <CrewList />
-        </Suspense>
-      </section>
+            <CrewList />
+          </section>
+        </Conversations>
+      </Suspense>
       <Suspense fallback={<Skeleton className="h-16 rounded-lg" />}>
         <UserCard />
       </Suspense>

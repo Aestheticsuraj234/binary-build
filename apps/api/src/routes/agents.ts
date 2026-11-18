@@ -5,26 +5,14 @@ import {
   agentInputSchema,
   API_ERROR_CODES,
   getProvider,
-  replySchema,
   validate,
 } from '@binary/shared';
 import type {Context} from 'hono';
 import {Hono} from 'hono';
 import {z} from 'zod';
 
-import {buildSystemPrompt} from '../agents/system-prompt';
-import type {Engine} from '../engine/engine';
-import type {EngineFactory} from '../engine/factory';
-import {MissingKeyError} from '../engine/factory';
 import {findEncryptedKey} from '../key-store';
 import type {SignedInEnv} from '../middleware/require-user';
-import {VaultError} from '../vault';
-import {streamAnswer} from './stream-answer';
-
-interface AgentsRouteOptions {
-  db: Database;
-  engineFor: EngineFactory;
-}
 
 /** Only the fields the apps need; the owner and timestamps stay here. */
 export function toAgentSummary(row: AgentRow): AgentSummary {
@@ -65,7 +53,7 @@ function invalidInput(
 const agentIdSchema = z.uuid();
 
 /** Agent routes, mounted at /api/agents. Every query is scoped to the person. */
-export function agentsRoutes({db, engineFor}: AgentsRouteOptions) {
+export function agentsRoutes(db: Database) {
   const agents = new AgentRepository(db);
   const templates = new AgentTemplateRepository(db);
   const routes = new Hono<SignedInEnv>();
@@ -146,58 +134,12 @@ export function agentsRoutes({db, engineFor}: AgentsRouteOptions) {
     return row ? c.json({agent: toAgentSummary(row)}) : notFound(c);
   });
 
+  /** Fires an agent. Its chats stay, read-only. */
   routes.delete('/:id', async c => {
     const id = agentIdSchema.safeParse(c.req.param('id'));
-    const deleted =
-      id.success && (await agents.deleteForUser(id.data, c.var.user.id));
-    return deleted ? c.json({ok: true}) : notFound(c);
-  });
-
-  /** Streams the agent's answer to a message, in character. */
-  routes.post('/:id/reply', async c => {
-    const agent = await findAgent(c);
-    if (!agent) {
-      return notFound(c);
-    }
-    const result = validate(replySchema, await c.req.json().catch(() => null));
-    if (!result.success) {
-      return invalidInput(c, result.firstError, result.errors);
-    }
-    if (!agent.provider || !agent.model) {
-      return c.json(
-        {
-          code: API_ERROR_CODES.noKey,
-          message: `${agent.name} has no model yet. Pick one on the edit page.`,
-        },
-        409,
-      );
-    }
-
-    const name = getProvider(agent.provider).name;
-    let engine: Engine;
-    try {
-      engine = await engineFor(c.var.user.id, agent.provider, agent.model);
-    } catch (error) {
-      if (error instanceof MissingKeyError || error instanceof VaultError) {
-        return c.json(
-          {
-            code: API_ERROR_CODES.noKey,
-            message: `${agent.name} thinks with ${name}. Add your ${name} key on the API keys page.`,
-          },
-          409,
-        );
-      }
-      throw error;
-    }
-
-    return streamAnswer(engine, {
-      prompt: result.data.message,
-      history: result.data.history,
-      // Rebuilt from the saved profile on every message, so edits apply
-      // to the very next answer.
-      system: buildSystemPrompt(agent),
-      signal: c.req.raw.signal,
-    });
+    const fired =
+      id.success && (await agents.fireForUser(id.data, c.var.user.id));
+    return fired ? c.json({ok: true}) : notFound(c);
   });
 
   return routes;
