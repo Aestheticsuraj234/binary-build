@@ -30,8 +30,14 @@ export const sandboxes = pgTable(
     agentId: uuid('agent_id')
       .notNull()
       .references(() => agents.id, {onDelete: 'cascade'}),
+    /** A code sandbox, or a desktop you can watch. */
+    kind: text('kind', {enum: ['sandbox', 'desktop']})
+      .notNull()
+      .default('sandbox'),
     /** Who runs it, and its id there. */
     provider: text('provider', {enum: ['e2b']}).notNull(),
+    /** A desktop's view-only live stream, for its owner. */
+    liveUrl: text('live_url'),
     externalId: text('external_id').notNull(),
     status: text('status', {enum: ['running', 'stopped']})
       .notNull()
@@ -47,9 +53,10 @@ export const sandboxes = pgTable(
     stoppedAt: timestamp('stopped_at', {withTimezone: true}),
   },
   table => [
-    // One running sandbox per chat, even if two runs start at once.
-    uniqueIndex('sandboxes_running_thread_idx')
-      .on(table.threadId)
+    // One running sandbox (and one desktop) per chat, even if two runs
+    // start one at once.
+    uniqueIndex('sandboxes_running_thread_kind_idx')
+      .on(table.threadId, table.kind)
       .where(sql`${table.status} = 'running'`),
     index('sandboxes_user_id_status_idx').on(table.userId, table.status),
   ],

@@ -7,7 +7,12 @@ import {AgentForm} from '@/components/agents/agent-form';
 import {NeedsKey} from '@/components/agents/needs-key';
 import {PageHeading} from '@/components/agents/page-heading';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchAgent, fetchKeyStatuses, fetchComputers} from '@/lib/api';
+import {
+  fetchAgent,
+  fetchComputers,
+  fetchKeyStatuses,
+  fetchRunners,
+} from '@/lib/api';
 import {connectedProviders} from '@/lib/providers';
 
 export const metadata: Metadata = {title: 'Edit agent · Binary'};
@@ -18,10 +23,11 @@ async function EditAgent({
   params: PageProps<'/agents/[id]/edit'>['params'];
 }) {
   const {id} = await params;
-  const [agent, keys, computers] = await Promise.all([
+  const [agent, keys, computers, runners] = await Promise.all([
     fetchAgent(id),
     fetchKeyStatuses(),
     fetchComputers(),
+    fetchRunners(),
   ]);
   if (!agent) {
     notFound();
@@ -65,7 +71,10 @@ async function EditAgent({
         available={{
           cloud_sandbox: computers.sandbox.available,
           browser: computers.browser.available,
+          runner: runners.some(runner => runner.status !== 'pairing'),
+          cloud_desktop: computers.desktop.available,
         }}
+        runners={runners}
         initial={{
           name: agent.name,
           role: agent.role,
@@ -75,6 +84,8 @@ async function EditAgent({
           model,
           approvalMode: agent.approvalMode,
           computers: agent.computers,
+          engine: agent.engine,
+          runnerId: agent.runnerId,
         }}
       />
     </>

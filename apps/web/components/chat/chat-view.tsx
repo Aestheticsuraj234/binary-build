@@ -14,6 +14,7 @@ import {characterOf, CHAT_MESSAGE_MAX_LENGTH, readEvents} from '@binary/shared';
 import {cn} from 'cn';
 import {
   ArrowUpIcon,
+  EyeIcon,
   PencilIcon,
   PlusIcon,
   SquareIcon,
@@ -444,6 +445,7 @@ export function ChatView({
           )}
           {running.map((computer, index) => {
             const isBrowser = computer.kind === 'browser';
+            const isDesktop = computer.kind === 'cloud_desktop';
             return (
               <span
                 key={computer.id}
@@ -453,7 +455,23 @@ export function ChatView({
                 )}
               >
                 <span aria-hidden className="size-2 rounded-full bg-primary" />
-                {isBrowser ? 'Browser open' : 'Sandbox on'}
+                {isBrowser
+                  ? 'Browser open'
+                  : isDesktop
+                    ? 'Desktop on'
+                    : 'Sandbox on'}
+                {computer.liveUrl && (
+                  <a
+                    href={computer.liveUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Watch the desktop live"
+                    title="Watch the desktop live"
+                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <EyeIcon aria-hidden className="size-3.5" />
+                  </a>
+                )}
                 <Button
                   variant="ghost"
                   size="icon-xs"
@@ -501,6 +519,7 @@ export function ChatView({
             <ModelBadge
               provider={agent.provider}
               model={agent.model}
+              engine={agent.engine}
               className="mt-3"
             />
             <p

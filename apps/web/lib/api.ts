@@ -6,6 +6,7 @@ import type {
   IntegrationsCatalog,
   ProviderKeyStatus,
   RoutineDetail,
+  RunnerSummary,
   ComputersOverview,
   RoutinesOverview,
   ThreadDetail,
@@ -137,7 +138,14 @@ export const fetchComputers = cache(async (): Promise<ComputersOverview> => {
     body ?? {
       sandbox: {available: false, idleMinutes: 5},
       browser: {available: false, idleMinutes: 10, maxOpen: 5},
+      desktop: {available: false, idleMinutes: 10},
       computers: [],
     }
   );
+});
+
+/** This person's paired computers (Runners). */
+export const fetchRunners = cache(async (): Promise<RunnerSummary[]> => {
+  const body = await apiGet<{runners: RunnerSummary[]}>('/api/runners');
+  return body?.runners ?? [];
 });

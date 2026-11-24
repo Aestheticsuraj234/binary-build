@@ -8,11 +8,23 @@ import type {MadeImage} from './provider';
 export const IMAGES_KEY = '__images';
 /** What the model is told instead of the images (default: a chart note). */
 export const IMAGES_NOTE_KEY = '__imagesNote';
+/** Set when the model must see the images too (a desktop's screen). */
+export const IMAGES_FOR_MODEL_KEY = '__imagesForModel';
 
 /** A tool output with images the person should see, kept apart. */
 export interface WithImages {
   [IMAGES_KEY]?: MadeImage[];
   [IMAGES_NOTE_KEY]?: string;
+  [IMAGES_FOR_MODEL_KEY]?: boolean;
+}
+
+/** Whether the model should see this output's images. */
+function imagesForModel(output: unknown): boolean {
+  return (
+    typeof output === 'object' &&
+    output !== null &&
+    (output as WithImages)[IMAGES_FOR_MODEL_KEY] === true
+  );
 }
 
 function imagesOf(output: unknown): MadeImage[] {
@@ -36,6 +48,7 @@ export function forModel(output: unknown): unknown {
   const {
     [IMAGES_KEY]: _images,
     [IMAGES_NOTE_KEY]: note,
+    [IMAGES_FOR_MODEL_KEY]: _forModel,
     ...rest
   } = output as WithImages & Record<string, unknown>;
   if (note) {
@@ -50,6 +63,33 @@ export function forModel(output: unknown): unknown {
   };
 }
 
+/** The tool result the model reads: JSON, plus the images it should see. */
+export function toModelContent(output: unknown):
+  | {type: 'json'; value: unknown}
+  | {
+      type: 'content';
+      value: Array<
+        | {type: 'text'; text: string}
+        | {type: 'image-data'; data: string; mediaType: string}
+      >;
+    } {
+  const view = forModel(output) ?? null;
+  if (!imagesForModel(output)) {
+    return {type: 'json', value: view};
+  }
+  return {
+    type: 'content',
+    value: [
+      {type: 'text', text: JSON.stringify(view)},
+      ...imagesOf(output).map(image => ({
+        type: 'image-data' as const,
+        data: image.data,
+        mediaType: image.mime,
+      })),
+    ],
+  };
+}
+
 /**
  * Saves a tool output's images for the person and returns the model's
  * view of the output, plus references to the saved images.
@@ -58,11 +98,20 @@ export async function keepImages(
   db: Database,
   owner: {userId: string; threadId: string},
   output: unknown,
-): Promise<{output: unknown; images: ToolImage[]}> {
+): Promise<{
+  output: unknown;
+  images: ToolImage[];
+  /** The images the model must see too (a desktop's screen), if any. */
+  modelImages: MadeImage[];
+}> {
   const images = imagesOf(output);
   if (images.length === 0) {
-    return {output, images: []};
+    return {output, images: [], modelImages: []};
   }
   const saved = await new ToolImageRepository(db).saveAll(owner, images);
-  return {output: forModel(output), images: saved};
+  return {
+    output: forModel(output),
+    images: saved,
+    modelImages: imagesForModel(output) ? images : [],
+  };
 }

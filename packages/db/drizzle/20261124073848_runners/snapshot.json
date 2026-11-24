@@ -1,0 +1,677 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "208f7849-9782-4fd0-ad9f-6ce28f737e19",
+  "prevIds": [
+    "ae813a45-8276-432f-963c-f987dd22acc1"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "runners"
+      ],
+      "writes": [
+        "s|tbl|public.runners",
+        "n|tbl|public.runners",
+        "e|tbl|public.runners",
+        "n|rel|public.runners",
+        "n|type|public.runners",
+        "n|rel|public.runners_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sandboxes",
+        "sandboxes_running_thread_idx"
+      ],
+      "writes": [
+        "s|idx|public.sandboxes_running_thread_idx",
+        "n|idx|public.sandboxes_running_thread_idx",
+        "e|idx|public.sandboxes_running_thread_idx",
+        "n|rel|public.sandboxes_running_thread_idx"
+      ],
+      "reads": [
+        "e|tbl|public.sandboxes",
+        "n|sch|public",
+        "e|col|public.sandboxes.thread_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agents",
+        "engine"
+      ],
+      "writes": [
+        "s|col|public.agents.engine",
+        "n|col|public.agents.engine",
+        "e|col|public.agents.engine"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agents",
+        "runner_id"
+      ],
+      "writes": [
+        "s|col|public.agents.runner_id",
+        "n|col|public.agents.runner_id",
+        "e|col|public.agents.runner_id"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "sandboxes",
+        "kind"
+      ],
+      "writes": [
+        "s|col|public.sandboxes.kind",
+        "n|col|public.sandboxes.kind",
+        "e|col|public.sandboxes.kind"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "sandboxes",
+        "live_url"
+      ],
+      "writes": [
+        "s|col|public.sandboxes.live_url",
+        "n|col|public.sandboxes.live_url",
+        "e|col|public.sandboxes.live_url"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "runners",
+        "runners_user_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.runners_user_id_idx",
+        "n|idx|public.runners_user_id_idx",
+        "e|idx|public.runners_user_id_idx",
+        "n|rel|public.runners_user_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.runners",
+        "n|sch|public",
+        "n|col|public.runners.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "runners",
+        "runners_token_hash_idx"
+      ],
+      "writes": [
+        "s|idx|public.runners_token_hash_idx",
+        "n|idx|public.runners_token_hash_idx",
+        "e|idx|public.runners_token_hash_idx",
+        "n|rel|public.runners_token_hash_idx"
+      ],
+      "reads": [
+        "n|tbl|public.runners",
+        "n|sch|public",
+        "n|col|public.runners.token_hash"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "runners",
+        "runners_pairing_code_hash_idx"
+      ],
+      "writes": [
+        "s|idx|public.runners_pairing_code_hash_idx",
+        "n|idx|public.runners_pairing_code_hash_idx",
+        "e|idx|public.runners_pairing_code_hash_idx",
+        "n|rel|public.runners_pairing_code_hash_idx"
+      ],
+      "reads": [
+        "n|tbl|public.runners",
+        "n|sch|public",
+        "n|col|public.runners.pairing_code_hash"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sandboxes",
+        "sandboxes_running_thread_kind_idx"
+      ],
+      "writes": [
+        "s|idx|public.sandboxes_running_thread_kind_idx",
+        "n|idx|public.sandboxes_running_thread_kind_idx",
+        "e|idx|public.sandboxes_running_thread_kind_idx",
+        "n|rel|public.sandboxes_running_thread_kind_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|col|public.sandboxes.thread_id",
+        "n|col|public.sandboxes.kind"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "agents"
+      ],
+      "writes": [
+        "s|fk|public.agents.agents_runner_id_runners_id_fkey",
+        "n|fk|public.agents.agents_runner_id_runners_id_fkey",
+        "e|fk|public.agents.agents_runner_id_runners_id_fkey",
+        "n|con|public.agents.agents_runner_id_runners_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public",
+        "n|tbl|public.runners",
+        "n|sch|public",
+        "n|col|public.agents.runner_id",
+        "n|col|public.runners.id",
+        "e|uniqueness|public.runners.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "runners"
+      ],
+      "writes": [
+        "s|fk|public.runners.runners_user_id_user_id_fkey",
+        "n|fk|public.runners.runners_user_id_user_id_fkey",
+        "e|fk|public.runners.runners_user_id_user_id_fkey",
+        "n|con|public.runners.runners_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.runners",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.runners.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "runners",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agents",
+        "name": "engine",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'api'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agents",
+        "name": "runner_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "pairing_code_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "pairing_expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "token_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "paused_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "os",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "folders",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": "'{}'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "last_seen_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'sandbox'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "live_url",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "runners_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "runners_token_hash_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "token_hash",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "runners_pairing_code_hash_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "pairing_code_hash",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_running_thread_kind_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "thread_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "kind",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"status\" = 'running'",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agents",
+        "name": "agents_runner_id_runners_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "runner_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "runners",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "runners_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "runners",
+        "name": "runners_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"sandboxes_running_thread_idx\"]"
+    }
+  ]
+}

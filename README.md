@@ -13,7 +13,9 @@ run on a schedule, from a webhook or on demand, as durable jobs on
 Trigger.dev (chapter 7), and approvals: risky tools ask for your OK in the
 chat and in a Today inbox (chapter 8), and cloud sandboxes from E2B where
 characters run code and draw charts (chapter 9), and a headless browser
-that opens public pages and asks before clicking (chapter 10).
+that opens public pages and asks before clicking (chapter 10), and the
+Runner: characters work on your own computer, think with Claude Code or
+Codex, or use a cloud desktop you can watch live (chapter 11).
 
 ## What's inside
 
@@ -251,6 +253,63 @@ approvals existed got it too, so what they already did doesn't change.
   policy is what guards them.
 - Requests don't expire yet. Approving waits for the tool and the
   follow-up, so a slow tool makes the button slow.
+
+## How the Runner works
+
+The **Runner** (`apps/runner`) is a small app that lets characters work on
+**your own computer**, only inside the folders you share.
+
+1. Open **Your computers**, add a computer, and run the two commands it
+   shows, in this repo on that computer:
+
+   ```sh
+   pnpm runner pair K7QD-3MXP                     # the one-time code
+   pnpm runner start --folder ~/code/my-project   # only this is shared
+   ```
+
+2. Tick **Your computer** under a character's Computers (and pick which one).
+
+- **Nothing opens on your computer.** The Runner **long-polls** the API for
+  work (`/api/runner/jobs/next`) and posts events and results back; the API
+  never connects to it. Jobs wait in the API's memory, so restarting the
+  API drops jobs in flight, and routines on the Trigger.dev worker can't
+  reach your computer yet.
+- **Your computer has the final say** (`apps/runner/src/paths.ts`). Every path
+  is resolved to its real location (following symlinks and `..`) and
+  refused unless it's inside a shared folder, whatever the server asks.
+  Sharing your whole home folder or disk is refused too.
+- **Tools**: `computer_list_files` and `computer_read_file` are `read`;
+  `computer_write_file` and `computer_run_command` are `computer`, so they
+  ask first. A command runs **as you**, with your environment, starting in
+  a shared folder: read it before you approve it.
+- **Pairing**: a one-time code (10 minutes, single use) is swapped for a
+  token. Only hashes of both are stored, and the token sits in
+  `~/.binary-runner/config.json` (only you can read it). **Pause** stops all
+  work at once; **Remove** revokes the token.
+
+### Claude Code and Codex
+
+Under **Thinks with**, a character can use **Claude Code** or **Codex**
+instead of an API model. The Runner runs the CLI in your first shared
+folder, signed in as you (install it and sign in there first), and what it
+says and does streams into the chat as text and tool cards. No API key is
+needed. The CLI can't stop and ask Binary mid-run, so the approval mode
+maps to its permissions: **Plan only** → plan mode; **Ask first** and
+**Auto-approve reads** → read-only; **Accept edits** → may edit files in the
+shared folder. Claude Code never gets shell commands; Codex reads through
+commands, but its sandbox keeps it read-only (or writing only in the
+folder, with no network).
+
+### Cloud desktop
+
+With `E2B_API_KEY`, a character can have a **Cloud desktop**: a Linux
+desktop from E2B Desktop, one per chat, that you can **watch live** (the eye
+in the chat header, or Apps & tools). `desktop_screenshot` is `read`;
+clicking, typing, keys, scrolling and opening addresses are `computer`, so
+they ask first. Unlike charts, the model **sees** every screenshot as an
+image, including in the follow-up after you approve, so it knows where to
+click next. Desktops stop after 10 idle minutes, with Stop, or when the
+chat is deleted.
 
 ## How browsers work
 

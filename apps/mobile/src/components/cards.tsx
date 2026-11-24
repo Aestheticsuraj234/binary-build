@@ -4,6 +4,7 @@ import {
   colors,
   fontSize,
   fontWeight,
+  ENGINE_INFO,
   getProvider,
   radius,
   spacing,
@@ -18,10 +19,22 @@ import {CharacterFace} from '@/components/character-face';
 export function ModelBadge({
   provider,
   model,
+  engine = 'api',
 }: {
   provider: AgentSummary['provider'];
   model: string | null;
+  /** Claude Code or Codex show as themselves, not the API model. */
+  engine?: AgentSummary['engine'];
 }) {
+  if (engine !== 'api') {
+    return (
+      <View style={styles.badge}>
+        <Text numberOfLines={1} style={styles.badgeText}>
+          {ENGINE_INFO[engine].label} · on your computer
+        </Text>
+      </View>
+    );
+  }
   if (!provider || !model) {
     return null;
   }
@@ -75,7 +88,11 @@ export function AgentCard({agent}: {agent: AgentSummary}) {
       <Text numberOfLines={2} style={styles.text}>
         {agent.role}
       </Text>
-      <ModelBadge provider={agent.provider} model={agent.model} />
+      <ModelBadge
+        provider={agent.provider}
+        model={agent.model}
+        engine={agent.engine}
+      />
     </CharacterCard>
   );
 }

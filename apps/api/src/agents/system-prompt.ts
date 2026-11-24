@@ -66,6 +66,9 @@ export function buildSystemPrompt(
     run,
     sandbox,
     browser,
+    desktop,
+    runner = false,
+    cli = false,
   }: {
     unavailableApps?: string[];
     run?: RunContext;
@@ -73,6 +76,12 @@ export function buildSystemPrompt(
     sandbox?: 'on' | 'off';
     /** Set when the character has a browser: whether it's working. */
     browser?: 'on' | 'off';
+    /** Set when the character has a cloud desktop: whether it's working. */
+    desktop?: 'on' | 'off';
+    /** True when it works on the person's computer through a Runner. */
+    runner?: boolean;
+    /** True when it thinks with Claude Code or Codex. */
+    cli?: boolean;
   } = {},
 ): string {
   const character = characterOf(agent.avatar);
@@ -139,6 +148,39 @@ export function buildSystemPrompt(
       '',
       'You are meant to have a web browser, but there is no Chromium on ' +
         "this Binary, so you can't open pages with it. Say so if asked.",
+    );
+  }
+  if (runner && mode !== 'plan_only') {
+    lines.push(
+      '',
+      "You can work on the person's own computer, inside the folders they " +
+        'shared: computer_list_files and computer_read_file run at once; ' +
+        'computer_write_file and computer_run_command ask first, and run as ' +
+        'the person, so keep commands small and say what each does. Paths ' +
+        'outside the shared folders are refused by their computer.',
+    );
+  }
+  if (desktop === 'on' && mode !== 'plan_only') {
+    lines.push(
+      '',
+      'You have a cloud desktop for this chat (Linux, with a browser) that ' +
+        'the person can watch live. desktop_screenshot shows you the screen; ' +
+        'clicking, typing, keys, scrolling and opening addresses ask the ' +
+        'person first, and each returns the new screen for you to look at. ' +
+        'Use coordinates from the latest screenshot.',
+    );
+  } else if (desktop === 'off' && mode !== 'plan_only') {
+    lines.push(
+      '',
+      'You are meant to have a cloud desktop, but it is turned off on this ' +
+        "Binary (there's no E2B key). Say so if asked to use it.",
+    );
+  }
+  if (cli) {
+    lines.push(
+      '',
+      "You're running as a coding CLI on the person's computer, in their " +
+        "shared folder. Binary's other tools aren't available to you here.",
     );
   }
   if (unavailableApps.length > 0 && mode !== 'plan_only') {

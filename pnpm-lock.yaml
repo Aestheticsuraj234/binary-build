@@ -50,6 +50,9 @@ importers:
       '@e2b/code-interpreter':
         specifier: 2.9.1
         version: 2.9.1
+      '@e2b/desktop':
+        specifier: 2.5.0
+        version: 2.5.0
       '@hono/node-server':
         specifier: ^2.1.8
         version: 2.1.8(hono@4.13.19)
@@ -196,6 +199,34 @@ importers:
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
+
+  apps/runner:
+    dependencies:
+      '@binary/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+    devDependencies:
+      '@binary/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@binary/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^24.12.0
+        version: 24.19.2
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
 
   apps/web:
     dependencies:
@@ -1066,6 +1097,10 @@ packages:
 
   '@e2b/code-interpreter@2.9.1':
     resolution: {integrity: sha512-8/OpeMFf4irGssVN27KAczH0eE/RLzES1TgjKx0Fa1Jy8LVu/kO8ssE5Oby5vvYIxJF4rSvDAVBI+PD05siwzQ==}
+    engines: {node: '>=22.19.0'}
+
+  '@e2b/desktop@2.5.0':
+    resolution: {integrity: sha512-2RgSRF+YQMNdJeIFNmbBG1CV0beEmLfgMR5BdK3y2oP+VyH/8ymNUjXohpufIIhiVRmY3kaWWQ4LhH2b6ih7rA==}
     engines: {node: '>=22.19.0'}
 
   '@e2b/dockerfile-utils@0.1.2':
@@ -7679,6 +7714,10 @@ snapshots:
   '@dotenvx/primitives@0.8.0': {}
 
   '@e2b/code-interpreter@2.9.1':
+    dependencies:
+      e2b: 2.64.0
+
+  '@e2b/desktop@2.5.0':
     dependencies:
       e2b: 2.64.0
 

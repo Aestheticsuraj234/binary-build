@@ -1,20 +1,29 @@
 'use client';
 
 import type {ComputersOverview, ComputerSummary} from '@binary/shared';
-import {BROWSER_SETUP_HINT, SANDBOX_SETUP_HINT} from '@binary/shared';
 import {
+  BROWSER_SETUP_HINT,
+  DESKTOP_SETUP_HINT,
+  SANDBOX_SETUP_HINT,
+} from '@binary/shared';
+import {
+  EyeIcon,
   GlobeIcon,
   MessageSquareIcon,
+  MonitorIcon,
   SquareIcon,
   TerminalIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import {useState} from 'react';
+import {useState, useSyncExternalStore} from 'react';
 
 import {CharacterFace} from '@/components/characters/character-face';
 import {Button} from '@/components/ui/button';
 import {Spinner} from '@/components/ui/spinner';
 import {ApiError, callApi} from '@/lib/client-api';
+
+/** Nothing to subscribe to: only server vs browser matters. */
+const noSubscription = () => () => {};
 
 function ComputerRow({
   computer,
@@ -26,11 +35,21 @@ function ComputerRow({
   const [isStopping, setIsStopping] = useState(false);
   const [error, setError] = useState<string>();
   const isBrowser = computer.kind === 'browser';
-  const stopsAt = new Date(computer.expiresAt).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  const Icon = isBrowser ? GlobeIcon : TerminalIcon;
+  const isDesktop = computer.kind === 'cloud_desktop';
+  // The time is in the viewer's own locale and time zone, which the server
+  // can't know, so it's only shown once the page is in the browser.
+  const inBrowser = useSyncExternalStore(
+    noSubscription,
+    () => true,
+    () => false,
+  );
+  const stopsAt = inBrowser
+    ? new Date(computer.expiresAt).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : undefined;
+  const Icon = isBrowser ? GlobeIcon : isDesktop ? MonitorIcon : TerminalIcon;
 
   async function stop() {
     setIsStopping(true);
@@ -50,16 +69,32 @@ function ComputerRow({
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 truncate text-sm font-medium">
           <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          {isBrowser ? 'Browser' : 'Cloud sandbox'} ·{' '}
-          {computer.threadTitle ?? 'Untitled chat'}
+          {isBrowser
+            ? 'Browser'
+            : isDesktop
+              ? 'Cloud desktop'
+              : 'Cloud sandbox'}{' '}
+          · {computer.threadTitle ?? 'Untitled chat'}
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {computer.agentName}
-          {computer.url ? ` · ${computer.url}` : ''} · closes by itself at{' '}
-          {stopsAt} unless it&apos;s used again
+          {computer.url ? ` · ${computer.url}` : ''}
+          {stopsAt &&
+            ` · closes by itself at ${stopsAt} unless it's used again`}
         </p>
         {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       </div>
+      {computer.liveUrl && (
+        <a
+          href={computer.liveUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <EyeIcon aria-hidden className="size-4" />
+          Watch
+        </a>
+      )}
       <Link
         href={`/chats/${computer.threadId}`}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -83,7 +118,7 @@ function ComputerRow({
 /** Every running computer, sandboxes and browsers, with Stop. */
 export function ComputersPanel({initial}: {initial: ComputersOverview}) {
   const [computers, setComputers] = useState(initial.computers);
-  const {sandbox, browser} = initial;
+  const {sandbox, browser, desktop} = initial;
 
   return (
     <div className="flex flex-col gap-3">
@@ -102,6 +137,26 @@ export function ComputersPanel({initial}: {initial: ComputersOverview}) {
             {browser.available
               ? `A headless Chromium per chat, on this machine, that only reaches public addresses. Closes after ${browser.idleMinutes} idle minutes; at most ${browser.maxOpen} open.`
               : BROWSER_SETUP_HINT}
+          </span>
+        </li>
+        <li className="rounded-lg border bg-card p-4">
+          <span className="font-medium text-foreground">Cloud desktop</span>
+          <span className="mt-1 block">
+            {desktop.available
+              ? `A Linux desktop per chat, from E2B, that you can watch live. Stops after ${desktop.idleMinutes} idle minutes.`
+              : DESKTOP_SETUP_HINT}
+          </span>
+        </li>
+        <li className="rounded-lg border bg-card p-4">
+          <span className="font-medium text-foreground">Your computer</span>
+          <span className="mt-1 block">
+            Through the Runner, in the folders you share.{' '}
+            <Link
+              href="/computers"
+              className="text-foreground underline underline-offset-2"
+            >
+              Your computers
+            </Link>
           </span>
         </li>
       </ul>

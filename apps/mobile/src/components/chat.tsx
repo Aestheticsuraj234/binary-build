@@ -25,6 +25,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -444,7 +445,11 @@ export function Chat({
           <Text numberOfLines={1} style={styles.name}>
             {agent.name}
           </Text>
-          <ModelBadge provider={agent.provider} model={agent.model} />
+          <ModelBadge
+            provider={agent.provider}
+            model={agent.model}
+            engine={agent.engine}
+          />
           <Text accessibilityLiveRegion="polite" style={styles.stageLine}>
             {isFired
               ? `${agent.name} has left the crew.`
@@ -455,14 +460,27 @@ export function Chat({
 
       {running.map(computer => {
         const isBrowser = computer.kind === 'browser';
+        const isDesktop = computer.kind === 'cloud_desktop';
         return (
           <View key={computer.id} style={styles.sandbox}>
             <View style={styles.sandboxDot} />
             <Text numberOfLines={1} style={styles.sandboxText}>
               {isBrowser
                 ? `Browser open${computer.url ? ` · ${computer.url}` : ''}`
-                : 'Sandbox on'}
+                : isDesktop
+                  ? 'Desktop on'
+                  : 'Sandbox on'}
             </Text>
+            {computer.liveUrl && (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Watch the desktop live"
+                onPress={() => void Linking.openURL(computer.liveUrl!)}
+                hitSlop={8}
+              >
+                <Text style={styles.sandboxStop}>Watch</Text>
+              </Pressable>
+            )}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={

@@ -7,7 +7,12 @@ import {AgentForm} from '@/components/agents/agent-form';
 import {NeedsKey} from '@/components/agents/needs-key';
 import {PageHeading} from '@/components/agents/page-heading';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchKeyStatuses, fetchComputers, fetchTemplates} from '@/lib/api';
+import {
+  fetchKeyStatuses,
+  fetchComputers,
+  fetchRunners,
+  fetchTemplates,
+} from '@/lib/api';
 import {connectedProviders} from '@/lib/providers';
 
 export const metadata: Metadata = {title: 'Hire a character · Binary'};
@@ -33,10 +38,11 @@ async function NewAgent({
   searchParams: PageProps<'/agents/new'>['searchParams'];
 }) {
   const {template: slug} = await searchParams;
-  const [templates, keys, computers] = await Promise.all([
+  const [templates, keys, computers, runners] = await Promise.all([
     fetchTemplates(),
     fetchKeyStatuses(),
     fetchComputers(),
+    fetchRunners(),
   ]);
   const template = templates.find(t => t.slug === slug);
   const character = characterOf(template?.character ?? 'ember');
@@ -66,7 +72,10 @@ async function NewAgent({
         available={{
           cloud_sandbox: computers.sandbox.available,
           browser: computers.browser.available,
+          runner: runners.some(runner => runner.status !== 'pairing'),
+          cloud_desktop: computers.desktop.available,
         }}
+        runners={runners}
         templateId={template?.id ?? null}
         initial={{
           name: character.name,
@@ -81,8 +90,14 @@ async function NewAgent({
           computers: (template?.computers ?? []).filter(kind =>
             kind === 'cloud_sandbox'
               ? computers.sandbox.available
-              : computers.browser.available,
+              : kind === 'browser'
+                ? computers.browser.available
+                : kind === 'cloud_desktop'
+                  ? computers.desktop.available
+                  : runners.length > 0,
           ),
+          engine: 'api',
+          runnerId: null,
         }}
       />
     </>

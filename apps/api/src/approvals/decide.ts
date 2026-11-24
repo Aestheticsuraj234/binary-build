@@ -16,18 +16,18 @@ import {
   API_ERROR_CODES,
   CHAT_CONTEXT_MESSAGES,
   contextWindow,
-  getProvider,
 } from '@binary/shared';
 
 import type {AnswerDeps} from '../chat/answer';
 import {generateAnswer} from '../chat/answer';
 import {modelTurns, noteForModel, noteForPerson} from '../chat/history';
-import type {Engine} from '../engine/engine';
 import type {EngineFactory} from '../engine/factory';
-import {MissingKeyError} from '../engine/factory';
 import {ConflictError, NotFoundError} from '../errors';
 import {toChatMessage} from '../routes/threads';
 import {browserTools} from '../browser/tools';
+import {desktopTools} from '../desktop/tools';
+import {engineForAgent} from '../engine/agent-engine';
+import {runnerTools} from '../runners/tools';
 import {keepImages} from '../sandbox/images';
 import {sandboxTools} from '../sandbox/tools';
 import {toBinaryTools} from '../tools/composio';
@@ -35,7 +35,6 @@ import {activeToolkits} from '../tools/integrations';
 import {authorizationOf, openApp} from '../tools/mcp-apps';
 import type {BinaryTool} from '../tools/toolbox';
 import {sourceOf} from '../tools/toolbox';
-import {VaultError} from '../vault';
 
 /** What deciding needs: the chat pipeline's deps plus an engine factory. */
 export interface ApprovalDeps extends AnswerDeps {
@@ -159,6 +158,33 @@ async function findExactTool(
     return {tool, close: async () => {}};
   }
 
+  if (source.kind === 'runner') {
+    // Runs on the Runner the request was made for, never another.
+    const tool = runnerTools(deps.runners, {
+      userId,
+      runnerId: source.runnerId,
+    }).find(candidate => sameSource(sourceOf(candidate), source));
+    if (!tool) {
+      throw gone(`The ${source.tool} tool`);
+    }
+    return {tool, close: async () => {}};
+  }
+
+  if (source.kind === 'desktop') {
+    if (!deps.desktops.available) {
+      throw gone('The cloud desktop');
+    }
+    const tool = desktopTools(deps.desktops, {
+      userId,
+      threadId: approval.threadId,
+      agentId: approval.agentId,
+    }).find(candidate => sameSource(sourceOf(candidate), source));
+    if (!tool) {
+      throw gone(`The ${source.tool} tool`);
+    }
+    return {tool, close: async () => {}};
+  }
+
   if (!deps.composio) {
     throw gone('Composio');
   }
@@ -203,6 +229,8 @@ async function followUp(
   userId: string,
   threadId: string,
   note: MessageRow,
+  /** A desktop's new screen, for the model to see. */
+  screen: Array<{mime: string; data: string}> = [],
 ): Promise<{reply: ChatMessage | null; replyError: string | null}> {
   const threads = new ThreadRepository(deps.db);
   const found = await threads.findForUser(threadId, userId);
@@ -216,22 +244,11 @@ async function followUp(
       replyError: `${agent.name} was fired, so it can't follow up.`,
     };
   }
-  if (!agent.provider || !agent.model) {
-    return {reply: null, replyError: `${agent.name} has no model yet.`};
+  const chosen = await engineForAgent(deps, agent, userId);
+  if (!chosen.ok) {
+    return {reply: null, replyError: chosen.error};
   }
-  let engine: Engine;
-  try {
-    engine = await deps.engineFor(userId, agent.provider, agent.model);
-  } catch (error) {
-    if (error instanceof MissingKeyError || error instanceof VaultError) {
-      const name = getProvider(agent.provider).name;
-      return {
-        reply: null,
-        replyError: `${agent.name} thinks with ${name}. Add your ${name} key on the API keys page to hear back.`,
-      };
-    }
-    throw error;
-  }
+  const {engine} = chosen;
 
   const recent = contextWindow(
     await threads.recentMessages(threadId, CHAT_CONTEXT_MESSAGES),
@@ -242,6 +259,7 @@ async function followUp(
     userId,
     threadId,
     prompt: noteForModel(note, {followUp: true}),
+    promptImages: screen,
     history: modelTurns(recent),
   });
   if (!outcome.ok) {
@@ -292,6 +310,7 @@ export async function decideApproval(
 
   let final = decided;
   let images: ToolImage[] = [];
+  let screen: Array<{mime: string; data: string}> = [];
   if (decision === 'approve') {
     let result = await runApproved(deps, decided);
     if (result.status === 'done') {
@@ -302,6 +321,7 @@ export async function decideApproval(
         result.output,
       );
       images = kept.images;
+      screen = kept.modelImages;
       result = {status: 'done', output: kept.output};
     }
     final = (await approvals.finish(id, result)) ?? decided;
@@ -347,6 +367,7 @@ export async function decideApproval(
     userId,
     final.threadId,
     note,
+    screen,
   );
   return {
     approval: toApprovalSummary({...found, approval: final}),

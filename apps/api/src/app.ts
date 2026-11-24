@@ -18,6 +18,11 @@ import {approvalsRoutes, todayRoutes} from './routes/approvals';
 import {hooksRoutes} from './routes/hooks';
 import {BrowserManager} from './browser/manager';
 import {Computers} from './computers';
+import {DesktopManager} from './desktop/manager';
+import type {DesktopProvider} from './desktop/provider';
+import {runnerApiRoutes, runnersRoutes} from './routes/runners';
+import {RunnerAccess} from './runners/access';
+import {RunnerHub} from './runners/hub';
 import {computersRoutes, imagesRoutes} from './routes/computers';
 import {SandboxManager} from './sandbox/manager';
 import type {SandboxProvider} from './sandbox/provider';
@@ -53,6 +58,10 @@ export interface AppOptions {
   sandboxProvider?: SandboxProvider | null;
   /** Browsers. Off unless given (tests pass one that allows their server). */
   browsers?: BrowserManager;
+  /** Where cloud desktops come from, or null when they're off. */
+  desktopProvider?: DesktopProvider | null;
+  /** Jobs for Runners. Tests share one with their fake Runner. */
+  runnerHub?: RunnerHub;
   /**
    * Where routines run: Trigger.dev, or (the default) inside the API with
    * no schedules.
@@ -77,6 +86,8 @@ export function createApp({
   jobRunner,
   sandboxProvider = null,
   browsers = new BrowserManager({available: false}),
+  desktopProvider = null,
+  runnerHub = new RunnerHub(),
 }: AppOptions) {
   const app = new Hono();
   // Typed errors thrown anywhere become `{code, message}` JSON.
@@ -85,7 +96,9 @@ export function createApp({
   app.get('/health', c => c.json({ok: true}));
 
   const sandboxes = new SandboxManager(db, sandboxProvider);
-  const computers = new Computers(db, sandboxes, browsers);
+  const desktops = new DesktopManager(db, desktopProvider);
+  const runners = new RunnerAccess(db, runnerHub);
+  const computers = new Computers(db, sandboxes, browsers, desktops);
   const jobs =
     jobRunner ??
     new InProcessRunner(
@@ -98,6 +111,8 @@ export function createApp({
         composio,
         sandboxes,
         browsers,
+        desktops,
+        runners,
       }),
     );
   const routines = new RoutineService(db, jobs);
@@ -106,6 +121,9 @@ export function createApp({
   // routine's secret is checked instead of a session. Mounted before the
   // signed-in routes, so their session and CSRF checks never run here.
   app.route('/api/hooks', hooksRoutes({db, service: routines}));
+  // The Runner on your computer: it pairs with a one-time code and then
+  // uses its token. No session, and the API never connects to it.
+  app.route('/api/runner', runnerApiRoutes({db, hub: runnerHub}));
 
   // Better Auth handles everything under /api/auth: sign-up, sign-in,
   // sign-out and reading the current session.
@@ -132,6 +150,8 @@ export function createApp({
       composio,
       sandboxes,
       browsers,
+      desktops,
+      runners,
       computers,
     }),
   );
@@ -148,8 +168,11 @@ export function createApp({
       engineFor,
       sandboxes,
       browsers,
+      desktops,
+      runners,
     }),
   );
+  signedIn.route('/runners', runnersRoutes({db, hub: runnerHub}));
   signedIn.route('/computers', computersRoutes(computers));
   signedIn.route('/images', imagesRoutes(db));
   signedIn.route('/today', todayRoutes(db));

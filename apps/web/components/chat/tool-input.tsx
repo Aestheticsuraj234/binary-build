@@ -13,6 +13,31 @@ interface CodeInput {
   text?: string;
   submit?: boolean;
   key?: string;
+  keys?: string;
+  cwd?: string;
+  x?: number;
+  y?: number;
+  button?: string;
+  double?: boolean;
+  direction?: string;
+}
+
+/** A cloud desktop step in words: "Click at (120, 340)". */
+function desktopStep(name: string, value: CodeInput): string | null {
+  switch (name) {
+    case 'desktop_click':
+      return `${value.double ? 'Double-click' : value.button === 'right' ? 'Right-click' : 'Click'} at (${value.x}, ${value.y})`;
+    case 'desktop_type':
+      return `Type "${value.text ?? ''}"`;
+    case 'desktop_key':
+      return `Press ${value.keys ?? ''}`;
+    case 'desktop_scroll':
+      return `Scroll ${value.direction ?? 'down'}`;
+    case 'desktop_open':
+      return value.url ? `Open ${value.url}` : null;
+    default:
+      return null;
+  }
 }
 
 /** A browser step in words: "Click [3] More information…". */
@@ -56,6 +81,37 @@ export function ToolInput({name, input}: {name: string; input: unknown}) {
           {value.language === 'javascript' ? 'JavaScript' : 'Python'}
         </p>
         <Pre>{value.code}</Pre>
+      </div>
+    );
+  }
+  if (name === 'computer_run_command' && typeof value.command === 'string') {
+    return (
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">
+          On your computer{value.cwd ? `, in ${value.cwd}` : ''}
+        </p>
+        <Pre>{`$ ${value.command}`}</Pre>
+      </div>
+    );
+  }
+  if (name === 'computer_write_file' && typeof value.path === 'string') {
+    return (
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">
+          Write <span className="font-mono">{value.path}</span> on your computer
+        </p>
+        <Pre>{value.content ?? ''}</Pre>
+      </div>
+    );
+  }
+  const desktop = desktopStep(name, value);
+  if (desktop) {
+    return (
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">
+          On the cloud desktop
+        </p>
+        <Pre>{desktop}</Pre>
       </div>
     );
   }

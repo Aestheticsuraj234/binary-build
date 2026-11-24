@@ -21,6 +21,31 @@ interface CodeInput {
   text?: string;
   submit?: boolean;
   key?: string;
+  keys?: string;
+  cwd?: string;
+  x?: number;
+  y?: number;
+  button?: string;
+  double?: boolean;
+  direction?: string;
+}
+
+/** A cloud desktop step in words: "Click at (120, 340)". */
+function desktopStep(name: string, value: CodeInput): string | null {
+  switch (name) {
+    case 'desktop_click':
+      return `${value.double ? 'Double-click' : value.button === 'right' ? 'Right-click' : 'Click'} at (${value.x}, ${value.y})`;
+    case 'desktop_type':
+      return `Type "${value.text ?? ''}"`;
+    case 'desktop_key':
+      return `Press ${value.keys ?? ''}`;
+    case 'desktop_scroll':
+      return `Scroll ${value.direction ?? 'down'}`;
+    case 'desktop_open':
+      return value.url ? `Open ${value.url}` : null;
+    default:
+      return null;
+  }
 }
 
 /** A browser step in words: "Click [3] More information…". */
@@ -66,6 +91,26 @@ export function CodeView({name, input}: {name: string; input: unknown}) {
         text={value.code}
       />
     );
+  }
+  if (name === 'computer_run_command' && typeof value.command === 'string') {
+    return (
+      <Code
+        label={`On your computer${value.cwd ? `, in ${value.cwd}` : ''}`}
+        text={`$ ${value.command}`}
+      />
+    );
+  }
+  if (name === 'computer_write_file' && typeof value.path === 'string') {
+    return (
+      <Code
+        label={`Write ${value.path} on your computer`}
+        text={value.content ?? ''}
+      />
+    );
+  }
+  const desktop = desktopStep(name, value);
+  if (desktop) {
+    return <Code label="On the cloud desktop" text={desktop} />;
   }
   if (name === 'run_command' && typeof value.command === 'string') {
     return <Code label="Shell" text={`$ ${value.command}`} />;

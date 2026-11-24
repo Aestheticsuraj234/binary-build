@@ -8,6 +8,7 @@
     "mobile": "pnpm --filter mobile start",
     "trigger:dev": "pnpm --filter api trigger:dev",
     "browsers:install": "pnpm --filter api browsers:install",
+    "runner": "pnpm --silent --filter runner start",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @binary/db db:migrate",

@@ -1,5 +1,5 @@
 import type {AgentSummary, ProviderKeyStatus} from '@binary/shared';
-import type {ComputersOverview} from '@binary/shared';
+import type {ComputersOverview, RunnerSummary} from '@binary/shared';
 import {characterOf, colors, getProvider, spacing} from '@binary/shared';
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
@@ -13,6 +13,7 @@ export default function EditAgentScreen() {
   const {id} = useLocalSearchParams<{id: string}>();
   const agent = useApi<{agent: AgentSummary}>(`/api/agents/${id}`);
   const computers = useApi<ComputersOverview>('/api/computers');
+  const runners = useApi<{runners: RunnerSummary[]}>('/api/runners');
   const keys = useApi<{keys: ProviderKeyStatus[]}>('/api/keys');
 
   if (!agent.data || !keys.data) {
@@ -62,7 +63,12 @@ export default function EditAgentScreen() {
         available={{
           cloud_sandbox: computers.data?.sandbox.available ?? false,
           browser: computers.data?.browser.available ?? false,
+          runner: (runners.data?.runners ?? []).some(
+            r => r.status !== 'pairing',
+          ),
+          cloud_desktop: computers.data?.desktop.available ?? false,
         }}
+        runners={runners.data?.runners ?? []}
         initial={{
           name: current.name,
           role: current.role,
@@ -72,6 +78,8 @@ export default function EditAgentScreen() {
           model,
           approvalMode: current.approvalMode,
           computers: current.computers,
+          engine: current.engine,
+          runnerId: current.runnerId,
         }}
       />
     </>

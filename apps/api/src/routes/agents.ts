@@ -1,7 +1,16 @@
 import type {AgentRow, Database} from '@binary/db';
-import {AgentRepository, AgentTemplateRepository} from '@binary/db';
+import {
+  AgentRepository,
+  AgentTemplateRepository,
+  RunnerRepository,
+} from '@binary/db';
 import type {AgentSummary} from '@binary/shared';
-import {agentInputSchema, API_ERROR_CODES, getProvider} from '@binary/shared';
+import {
+  AGENT_MESSAGES,
+  agentInputSchema,
+  API_ERROR_CODES,
+  getProvider,
+} from '@binary/shared';
 import type {Context} from 'hono';
 import {Hono} from 'hono';
 
@@ -22,6 +31,8 @@ export function toAgentSummary(row: AgentRow): AgentSummary {
     templateId: row.templateId,
     approvalMode: row.approvalMode,
     computers: row.computers,
+    engine: row.engine,
+    runnerId: row.runnerId,
   };
 }
 
@@ -29,12 +40,28 @@ export function toAgentSummary(row: AgentRow): AgentSummary {
 export function agentsRoutes(db: Database) {
   const agents = new AgentRepository(db);
   const templates = new AgentTemplateRepository(db);
+  const runners = new RunnerRepository(db);
   const routes = new Hono<SignedInEnv>();
 
-  /** Reads and checks a hire/edit form, including that a key exists. */
+  /**
+   * Reads and checks a hire/edit form: the key for an API model exists,
+   * and the Runner (if any) is one of this person's computers.
+   */
   async function readAgentInput(c: Context<SignedInEnv>) {
     const input = await readJson(c, agentInputSchema);
-    if (!(await findEncryptedKey(db, c.var.user.id, input.provider))) {
+    if (
+      input.runnerId &&
+      !(await runners.findForUser(input.runnerId, c.var.user.id))
+    ) {
+      throw new InvalidInputError(AGENT_MESSAGES.runnerRequired, {
+        runnerId: AGENT_MESSAGES.runnerRequired,
+      });
+    }
+    // Claude Code and Codex sign in on your computer: no key needed here.
+    if (
+      input.engine === 'api' &&
+      !(await findEncryptedKey(db, c.var.user.id, input.provider))
+    ) {
       const message = `Add your ${getProvider(input.provider).name} key on the API keys page first.`;
       throw new InvalidInputError(
         message,

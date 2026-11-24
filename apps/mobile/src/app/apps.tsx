@@ -11,6 +11,7 @@ import {
   radius,
   RISK_INFO,
   BROWSER_SETUP_HINT,
+  DESKTOP_SETUP_HINT,
   SANDBOX_SETUP_HINT,
   spacing,
   TOOL_RISKS,
@@ -261,6 +262,17 @@ function ComputersSection() {
               : SANDBOX_SETUP_HINT}
           </Text>
           <Text style={styles.muted}>
+            {overview.data.desktop.available
+              ? `Cloud desktop: a Linux desktop per chat that you can watch live; stops after ${overview.data.desktop.idleMinutes} idle minutes.`
+              : DESKTOP_SETUP_HINT}
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/computers')}
+          >
+            <Text style={styles.cardTitle}>Your computers (the Runner) →</Text>
+          </Pressable>
+          <Text style={styles.muted}>
             {overview.data.browser.available
               ? `Browser: a headless Chromium per chat that only reaches public addresses; closes after ${overview.data.browser.idleMinutes} idle minutes.`
               : BROWSER_SETUP_HINT}
@@ -270,6 +282,7 @@ function ComputersSection() {
           ) : (
             overview.data.computers.map(computer => {
               const isBrowser = computer.kind === 'browser';
+              const isDesktop = computer.kind === 'cloud_desktop';
               return (
                 <View key={computer.id} style={styles.appHeader}>
                   <Pressable
@@ -278,8 +291,12 @@ function ComputersSection() {
                     style={styles.appTitle}
                   >
                     <Text style={styles.cardTitle}>
-                      {isBrowser ? 'Browser' : 'Sandbox'} ·{' '}
-                      {computer.threadTitle ?? 'Untitled chat'}
+                      {isBrowser
+                        ? 'Browser'
+                        : isDesktop
+                          ? 'Desktop'
+                          : 'Sandbox'}{' '}
+                      · {computer.threadTitle ?? 'Untitled chat'}
                     </Text>
                     <Text numberOfLines={1} style={styles.muted}>
                       {computer.agentName}

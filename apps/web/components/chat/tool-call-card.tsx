@@ -199,7 +199,9 @@ export function ToolCallCard({
           alt={
             call.name.startsWith('browser_')
               ? 'Screenshot of the page'
-              : `Chart from ${readableToolName(call.name)}`
+              : call.name.startsWith('desktop_')
+                ? 'Screenshot of the cloud desktop'
+                : `Chart from ${readableToolName(call.name)}`
           }
           className="block w-full border-t bg-white"
           loading="lazy"
