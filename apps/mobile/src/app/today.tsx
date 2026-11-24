@@ -23,6 +23,7 @@ import {
 
 import {CharacterFace} from '@/components/character-face';
 import {formatRunDate, RunStatusBadge} from '@/components/routine-parts';
+import {CodeView} from '@/components/tool-media';
 import {DecisionButtons, RiskBadge} from '@/components/tools';
 import {useApi} from '@/hooks/use-api';
 import {decideRequest} from '@/lib/approvals';
@@ -82,11 +83,13 @@ function ApprovalCard({
           </View>
         </View>
       </View>
-      <ScrollView horizontal style={styles.code}>
-        <Text selectable style={styles.codeText}>
-          {inputText(approval.input)}
-        </Text>
-      </ScrollView>
+      {CodeView({name: approval.toolName, input: approval.input}) ?? (
+        <ScrollView horizontal style={styles.code}>
+          <Text selectable style={styles.codeText}>
+            {inputText(approval.input)}
+          </Text>
+        </ScrollView>
+      )}
       <DecisionButtons
         onDecide={decide}
         label="Approving runs exactly this, once."

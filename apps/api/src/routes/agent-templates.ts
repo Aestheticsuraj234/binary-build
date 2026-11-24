@@ -20,6 +20,7 @@ export function agentTemplatesRoutes(db: Database) {
       role: row.role,
       instructions: row.instructions,
       character: TEMPLATE_CHARACTERS[row.slug] ?? 'pebble',
+      computer: row.computer,
     }));
     return c.json({templates: summaries});
   });

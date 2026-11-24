@@ -8,6 +8,8 @@ import {logger, schedules, task} from '@trigger.dev/sdk';
 import {parseWorkerEnv} from '../env';
 import type {RoutineExecutor} from '../routines/run-routine';
 import {createRoutineExecutor} from '../routines/run-routine';
+import {E2BProvider} from '../sandbox/e2b';
+import {SandboxManager} from '../sandbox/manager';
 import {createComposioGateway} from '../tools/composio';
 import {createVault} from '../vault';
 
@@ -41,6 +43,10 @@ function workerDeps() {
         composio: env.COMPOSIO_API_KEY
           ? createComposioGateway(env.COMPOSIO_API_KEY)
           : null,
+        sandboxes: new SandboxManager(
+          db,
+          env.E2B_API_KEY ? new E2BProvider(env.E2B_API_KEY) : null,
+        ),
       }),
     };
   }

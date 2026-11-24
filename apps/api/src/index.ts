@@ -9,6 +9,8 @@ import type {JobRunner} from './jobs/job-runner';
 import {InProcessRunner} from './jobs/job-runner';
 import {TriggerDevRunner} from './jobs/trigger-dev-runner';
 import {createRoutineExecutor} from './routines/run-routine';
+import {E2BProvider} from './sandbox/e2b';
+import {SandboxManager} from './sandbox/manager';
 import {createComposioGateway} from './tools/composio';
 import {createVault} from './vault';
 
@@ -34,6 +36,14 @@ function main(): void {
     ? createComposioGateway(env.COMPOSIO_API_KEY)
     : null;
 
+  // Cloud sandboxes, when there's an E2B key.
+  const sandboxProvider = env.E2B_API_KEY
+    ? new E2BProvider(env.E2B_API_KEY)
+    : null;
+  if (!sandboxProvider) {
+    console.log('Cloud sandboxes are off (no E2B_API_KEY).');
+  }
+
   // Routines run on Trigger.dev when it's set up, otherwise in this process.
   let jobRunner: JobRunner;
   if (env.TRIGGER_SECRET_KEY) {
@@ -44,7 +54,12 @@ function main(): void {
   } else {
     const inProcess = new InProcessRunner(
       db,
-      createRoutineExecutor({db, vault, composio}),
+      createRoutineExecutor({
+        db,
+        vault,
+        composio,
+        sandboxes: new SandboxManager(db, sandboxProvider),
+      }),
     );
     jobRunner = inProcess;
     console.log(
@@ -67,6 +82,7 @@ function main(): void {
     webUrl: env.WEB_URL,
     apiUrl: env.BETTER_AUTH_URL,
     jobRunner,
+    sandboxProvider,
   });
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.

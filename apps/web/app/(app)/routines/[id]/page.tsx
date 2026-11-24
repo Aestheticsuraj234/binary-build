@@ -35,6 +35,7 @@ async function Routine({
           model: null,
           templateId: null,
           approvalMode: DEFAULT_APPROVAL_MODE,
+          computer: 'none' as const,
         },
         ...agents,
       ];

@@ -8,6 +8,9 @@ import type {RunContext} from '../agents/system-prompt';
 import {buildSystemPrompt} from '../agents/system-prompt';
 import type {Engine} from '../engine/engine';
 import {engineErrorMessage} from '../routes/stream-answer';
+import {keepImages} from '../sandbox/images';
+import type {SandboxManager} from '../sandbox/manager';
+import {sandboxTools} from '../sandbox/tools';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
 import {sourceOf, Toolbox} from '../tools/toolbox';
@@ -34,12 +37,16 @@ export interface AnswerDeps {
   vault: Vault;
   builtInTools: () => BinaryTool[];
   composio: ComposioGateway | null;
+  /** Cloud sandboxes; off (unavailable) without an E2B key. */
+  sandboxes: SandboxManager;
 }
 
 export interface AnswerRequest {
   engine: Engine;
   agent: AgentRow;
   userId: string;
+  /** The chat this answer is for (its sandbox and images belong to it). */
+  threadId: string;
   /** The newest message from the person. */
   prompt: string;
   /** Earlier turns, oldest first. */
@@ -74,18 +81,31 @@ export type AnswerOutcome =
  * tools and the same rules. The caller saves the result.
  */
 export async function generateAnswer(
-  {db, vault, builtInTools, composio}: AnswerDeps,
-  {engine, agent, userId, prompt, history, run}: AnswerRequest,
+  {db, vault, builtInTools, composio, sandboxes}: AnswerDeps,
+  {engine, agent, userId, threadId, prompt, history, run}: AnswerRequest,
   onProgress: (progress: AnswerProgress) => void = () => {},
 ): Promise<AnswerOutcome> {
   const mode = agent.approvalMode;
   // Built-in tools plus every app that answers. An app that's down is
   // left out, and the answer carries on without it. Plan only uses no
   // tools, so it doesn't open any apps.
+  const wantsSandbox = agent.computer === 'cloud_sandbox';
+  const hasSandbox = wantsSandbox && sandboxes.available;
   const tools =
     mode === 'plan_only'
       ? NO_TOOLS
-      : await loadUserToolbox(db, vault, userId, builtInTools(), composio);
+      : await loadUserToolbox(
+          db,
+          vault,
+          userId,
+          [
+            ...builtInTools(),
+            ...(hasSandbox
+              ? sandboxTools(sandboxes, {userId, threadId, agentId: agent.id})
+              : []),
+          ],
+          composio,
+        );
   const calls = new Map<string, ToolCallRecord>();
   const approvals: PendingApproval[] = [];
   const report = (call: ToolCallRecord) => {
@@ -104,6 +124,7 @@ export async function generateAnswer(
       system: buildSystemPrompt(agent, {
         unavailableApps: tools.unavailable,
         run,
+        sandbox: wantsSandbox ? (hasSandbox ? 'on' : 'off') : undefined,
       }),
       tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,
@@ -152,11 +173,18 @@ export async function generateAnswer(
         if (!call || call.status === 'waiting') {
           continue;
         }
-        report(
-          part.type === 'tool-result'
-            ? {...call, status: 'done', output: part.output}
-            : {...call, status: 'failed', error: part.error},
-        );
+        if (part.type === 'tool-result') {
+          // Charts are saved for the person; the card keeps the model's view.
+          const kept = await keepImages(db, {userId, threadId}, part.output);
+          report({
+            ...call,
+            status: 'done',
+            output: kept.output,
+            ...(kept.images.length > 0 ? {images: kept.images} : {}),
+          });
+        } else {
+          report({...call, status: 'failed', error: part.error});
+        }
       }
     }
   } catch (error) {

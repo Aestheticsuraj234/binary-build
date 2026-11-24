@@ -11,6 +11,7 @@ import {generateAnswer} from '../chat/answer';
 import type {Engine} from '../engine/engine';
 import type {EngineFactory, ModelBuilder} from '../engine/factory';
 import {createEngineFactory, MissingKeyError} from '../engine/factory';
+import {SandboxManager} from '../sandbox/manager';
 import {builtInTools as defaultBuiltInTools} from '../tools/built-in';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
@@ -133,6 +134,7 @@ export async function runRoutine(
       engine,
       agent,
       userId: routine.userId,
+      threadId,
       prompt,
       history: [],
       run: {routineName: routine.name, hasWebhookData: run.payload !== null},
@@ -163,6 +165,8 @@ export interface ExecutorOptions {
   buildModel?: ModelBuilder;
   builtInTools?: () => BinaryTool[];
   composio?: ComposioGateway | null;
+  /** Cloud sandboxes; off unless given. */
+  sandboxes?: SandboxManager;
 }
 
 /** Builds `runRoutine` with its dependencies filled in. */
@@ -172,12 +176,14 @@ export function createRoutineExecutor({
   buildModel,
   builtInTools = defaultBuiltInTools,
   composio = null,
+  sandboxes = new SandboxManager(db, null),
 }: ExecutorOptions): RoutineExecutor {
   const deps: RunDeps = {
     db,
     vault,
     builtInTools,
     composio,
+    sandboxes,
     engineFor: createEngineFactory({db, vault, buildModel}),
   };
   return (runId, options) => runRoutine(deps, runId, options);

@@ -14,6 +14,7 @@ export type AgentChanges = Pick<
   | 'provider'
   | 'model'
   | 'approvalMode'
+  | 'computer'
 >;
 
 /**

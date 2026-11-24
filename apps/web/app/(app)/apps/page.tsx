@@ -6,11 +6,17 @@ import {Suspense} from 'react';
 
 import {Page} from '@/components/page';
 import {AppsPanel} from '@/components/tools/apps-panel';
+import {SandboxesPanel} from '@/components/tools/sandboxes-panel';
 import {RiskBadge, ToolList} from '@/components/tools/risk-badge';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchToolsOverview} from '@/lib/api';
+import {fetchSandboxes, fetchToolsOverview} from '@/lib/api';
 
 export const metadata: Metadata = {title: 'Apps & tools · Binary'};
+
+/** Running cloud sandboxes, or how to turn them on. */
+async function Sandboxes() {
+  return <SandboxesPanel initial={await fetchSandboxes()} />;
+}
 
 /** Built-in tools and connected apps. Apps are asked for their tools, so this streams in. */
 async function Tools() {
@@ -65,6 +71,14 @@ export default function AppsPage() {
       >
         <Tools />
       </Suspense>
+      <section aria-labelledby="sandboxes-heading" className="mt-12">
+        <h2 id="sandboxes-heading" className="mb-4 text-2xl font-semibold">
+          Cloud sandboxes
+        </h2>
+        <Suspense fallback={<Skeleton className="h-24 rounded-lg" />}>
+          <Sandboxes />
+        </Suspense>
+      </section>
       <section aria-labelledby="composio-heading" className="mt-12">
         <h2 id="composio-heading" className="text-2xl font-semibold">
           Gmail, GitHub, Slack and many more

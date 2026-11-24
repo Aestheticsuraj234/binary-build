@@ -3,6 +3,7 @@ export * from './approvals';
 export * from './api-types';
 export * from './auth-schemas';
 export * from './characters';
+export * from './computers';
 export * from './chat-schemas';
 export * from './design-tokens';
 export * from './engine-schemas';

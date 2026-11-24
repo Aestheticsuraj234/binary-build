@@ -10,6 +10,7 @@ import type {
   ApprovalSummary,
   ChatMessage,
   ToolCallRecord,
+  ToolImage,
 } from '@binary/shared';
 import {
   API_ERROR_CODES,
@@ -26,6 +27,8 @@ import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
 import {ConflictError, NotFoundError} from '../errors';
 import {toChatMessage} from '../routes/threads';
+import {keepImages} from '../sandbox/images';
+import {sandboxTools} from '../sandbox/tools';
 import {toBinaryTools} from '../tools/composio';
 import {activeToolkits} from '../tools/integrations';
 import {authorizationOf, openApp} from '../tools/mcp-apps';
@@ -83,9 +86,9 @@ function sameSource(a: ToolSource, b: ToolSource): boolean {
  */
 async function findExactTool(
   deps: ApprovalDeps,
-  userId: string,
-  source: ToolSource,
+  approval: ApprovalRow,
 ): Promise<FoundTool> {
+  const {userId, toolSource: source} = approval;
   const gone = (what: string) =>
     new Error(`${what} isn't available anymore, so nothing ran.`);
 
@@ -123,6 +126,22 @@ async function findExactTool(
     return {tool, close: () => open.close()};
   }
 
+  if (source.kind === 'sandbox') {
+    if (!deps.sandboxes.available) {
+      throw gone('The cloud sandbox');
+    }
+    // The tool runs in the sandbox of the chat that asked.
+    const tool = sandboxTools(deps.sandboxes, {
+      userId,
+      threadId: approval.threadId,
+      agentId: approval.agentId,
+    }).find(candidate => sameSource(sourceOf(candidate), source));
+    if (!tool) {
+      throw gone(`The ${source.tool} tool`);
+    }
+    return {tool, close: async () => {}};
+  }
+
   if (!deps.composio) {
     throw gone('Composio');
   }
@@ -144,7 +163,7 @@ async function runApproved(
 > {
   let found: FoundTool | undefined;
   try {
-    found = await findExactTool(deps, approval.userId, approval.toolSource);
+    found = await findExactTool(deps, approval);
     const output = await found.tool.run(approval.input, undefined);
     return {status: 'done', output};
   } catch (error) {
@@ -204,6 +223,7 @@ async function followUp(
     engine,
     agent,
     userId,
+    threadId,
     prompt: noteForModel(note, {followUp: true}),
     history: modelTurns(recent),
   });
@@ -254,15 +274,31 @@ export async function decideApproval(
   }
 
   let final = decided;
+  let images: ToolImage[] = [];
   if (decision === 'approve') {
-    const result = await runApproved(deps, decided);
+    let result = await runApproved(deps, decided);
+    if (result.status === 'done') {
+      // Charts are saved for the person; the model only reads a note.
+      const kept = await keepImages(
+        deps.db,
+        {userId, threadId: decided.threadId},
+        result.output,
+      );
+      images = kept.images;
+      result = {status: 'done', output: kept.output};
+    }
     final = (await approvals.finish(id, result)) ?? decided;
   }
 
   const change = (call: ToolCallRecord): ToolCallRecord => {
     const {error: _waiting, output: _none, ...rest} = call;
     if (final.status === 'done') {
-      return {...rest, status: 'done', output: final.output};
+      return {
+        ...rest,
+        status: 'done',
+        output: final.output,
+        ...(images.length > 0 ? {images} : {}),
+      };
     }
     if (final.status === 'failed') {
       return {...rest, status: 'failed', error: final.error ?? 'It failed.'};

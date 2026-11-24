@@ -62,6 +62,7 @@ describe('hiring', () => {
     expect(Object.keys(agent).sort()).toEqual([
       'approvalMode',
       'avatar',
+      'computer',
       'id',
       'instructions',
       'model',
@@ -73,8 +74,9 @@ describe('hiring', () => {
     expect(agent).toMatchObject({
       name: 'Ada',
       avatar: 'nova',
-      // New characters start on Auto-approve reads.
+      // New characters start on Auto-approve reads, with no computer.
       approvalMode: 'auto_reads',
+      computer: 'none',
     });
   });
 

@@ -10,6 +10,9 @@ import {
   APPROVAL_MODE_INFO,
   APPROVAL_MODES,
   CAST,
+  COMPUTER_INFO,
+  COMPUTERS,
+  SANDBOX_SETUP_HINT,
   characterOf,
   colors,
   fontSize,
@@ -45,6 +48,8 @@ interface AgentFormProps {
   initial: AgentFormValues;
   /** Providers the person has a key for; the only ones they can pick. */
   connectedProviders: ProviderId[];
+  /** False without an E2B key on the server. */
+  sandboxesAvailable: boolean;
   agentId?: string;
   templateId?: string | null;
 }
@@ -104,6 +109,7 @@ export function AgentForm({
   mode,
   initial,
   connectedProviders,
+  sandboxesAvailable,
   agentId,
   templateId,
 }: AgentFormProps) {
@@ -296,6 +302,20 @@ export function AgentForm({
         />
         <Text style={styles.modeHint}>
           {APPROVAL_MODE_INFO[values.approvalMode].description}
+        </Text>
+
+        <ChoiceRow
+          label="Computer"
+          options={COMPUTERS}
+          value={values.computer}
+          onChange={computer => set('computer', computer)}
+          describe={computer => COMPUTER_INFO[computer].label}
+          error={errors.computer}
+        />
+        <Text style={styles.modeHint}>
+          {values.computer === 'cloud_sandbox' && !sandboxesAvailable
+            ? SANDBOX_SETUP_HINT
+            : COMPUTER_INFO[values.computer].description}
         </Text>
 
         {formError && <Text style={styles.formError}>{formError}</Text>}

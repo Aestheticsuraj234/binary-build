@@ -8,7 +8,8 @@ import {useRouter} from 'next/navigation';
 import {useState} from 'react';
 
 import {CharacterFace} from '@/components/characters/character-face';
-import {asJson, DecisionButtons} from '@/components/chat/tool-call-card';
+import {DecisionButtons} from '@/components/chat/tool-call-card';
+import {ToolInput} from '@/components/chat/tool-input';
 import {formatRunDate} from '@/components/routines/run-status';
 import {RiskBadge} from '@/components/tools/risk-badge';
 import {decideRequest} from '@/lib/approvals';
@@ -81,9 +82,7 @@ function ApprovalCard({
           Chat
         </Link>
       </div>
-      <pre className="max-h-48 overflow-auto rounded-md bg-background p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words">
-        {asJson(approval.input)}
-      </pre>
+      <ToolInput name={approval.toolName} input={approval.input} />
       <DecisionButtons
         onDecide={decide}
         label="Approving runs exactly this, once."

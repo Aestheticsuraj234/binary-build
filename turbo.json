@@ -10,7 +10,8 @@
     "API_URL",
     "PORT",
     "COMPOSIO_API_KEY",
-    "TRIGGER_SECRET_KEY"
+    "TRIGGER_SECRET_KEY",
+    "E2B_API_KEY"
   ],
   "tasks": {
     "build": {

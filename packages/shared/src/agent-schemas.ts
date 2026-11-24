@@ -2,6 +2,7 @@ import {z} from 'zod';
 
 import {approvalModeSchema, DEFAULT_APPROVAL_MODE} from './approvals';
 import {characterSchema} from './characters';
+import {computerSchema} from './computers';
 import {isModelOf, PROVIDER_IDS} from './providers';
 
 export const AGENT_NAME_MAX_LENGTH = 40;
@@ -41,6 +42,8 @@ export const agentInputSchema = z
     model: z.string().trim(),
     /** How freely it may use tools. Older apps don't send it. */
     approvalMode: approvalModeSchema.default(DEFAULT_APPROVAL_MODE),
+    /** Its computer, if any. Older apps don't send it. */
+    computer: computerSchema.default('none'),
     /** The template this agent was copied from, if any. */
     templateId: z.uuid().nullable().optional(),
   })

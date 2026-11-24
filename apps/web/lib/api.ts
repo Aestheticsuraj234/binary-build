@@ -6,6 +6,7 @@ import type {
   IntegrationsCatalog,
   ProviderKeyStatus,
   RoutineDetail,
+  SandboxesOverview,
   RoutinesOverview,
   ThreadDetail,
   TodayOverview,
@@ -127,4 +128,10 @@ export const fetchToday = cache(async (): Promise<TodayOverview> => {
 export const fetchPendingCount = cache(async (): Promise<number> => {
   const body = await apiGet<{pending: number}>('/api/approvals/count');
   return body?.pending ?? 0;
+});
+
+/** Whether cloud sandboxes are on, and which are running. */
+export const fetchSandboxes = cache(async (): Promise<SandboxesOverview> => {
+  const body = await apiGet<SandboxesOverview>('/api/sandboxes');
+  return body ?? {available: false, idleMinutes: 5, sandboxes: []};
 });
