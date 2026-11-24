@@ -5,12 +5,20 @@ import type {
   ChatEvent,
   ChatMessage,
   Mood,
+  SandboxesOverview,
+  SandboxSummary,
   ThreadSummary,
   ToolCallRecord,
 } from '@binary/shared';
 import {characterOf, CHAT_MESSAGE_MAX_LENGTH, readEvents} from '@binary/shared';
 import {cn} from 'cn';
-import {ArrowUpIcon, PencilIcon, PlusIcon, Trash2Icon} from 'lucide-react';
+import {
+  ArrowUpIcon,
+  PencilIcon,
+  PlusIcon,
+  SquareIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import Link from 'next/link';
 import {usePathname, useRouter} from 'next/navigation';
 import type {FormEvent, KeyboardEvent} from 'react';
@@ -79,6 +87,8 @@ interface ChatViewProps {
   initialMessages: ChatMessage[];
   /** A fired agent's chat can be read but not continued. */
   isFired: boolean;
+  /** The chat's running cloud sandbox, if any. */
+  initialSandbox?: SandboxSummary | null;
 }
 
 /**
@@ -92,6 +102,7 @@ export function ChatView({
   thread,
   initialMessages,
   isFired,
+  initialSandbox = null,
 }: ChatViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -103,6 +114,8 @@ export function ChatView({
   // The tool being used right now, for the stage line.
   const [activeTool, setActiveTool] = useState<string>();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sandbox, setSandbox] = useState(initialSandbox);
+  const [isStopping, setIsStopping] = useState(false);
   const nextLocalId = useRef(1);
   const controllerRef = useRef<AbortController>(null);
   const happyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -150,6 +163,33 @@ export function ChatView({
       router.refresh();
     }
   }, [thread, threadId, pathname, router]);
+
+  /** Checks whether this chat's sandbox runs, after something may have started it. */
+  function refreshSandbox(id: string | null = threadId) {
+    if (agent.computer !== 'cloud_sandbox' || !id) {
+      return;
+    }
+    callApi<SandboxesOverview>('/api/sandboxes')
+      .then(body =>
+        setSandbox(body.sandboxes.find(s => s.threadId === id) ?? null),
+      )
+      .catch(() => {});
+  }
+
+  async function stopSandbox() {
+    if (!sandbox) {
+      return;
+    }
+    setIsStopping(true);
+    try {
+      await callApi(`/api/sandboxes/${sandbox.id}/stop`, {method: 'POST'});
+      setSandbox(null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsStopping(false);
+    }
+  }
 
   function updateMessage(id: string, change: (m: Message) => Message) {
     setMessages(current => current.map(m => (m.id === id ? change(m) : m)));
@@ -253,6 +293,7 @@ export function ChatView({
               // A new request waits in Today.
               announceApprovalsChanged();
             }
+            refreshSandbox(id);
           }
         }
       }
@@ -341,6 +382,7 @@ export function ChatView({
     followRef.current = true;
     setMood('happy');
     happyTimer.current = setTimeout(() => setMood('idle'), 2500);
+    refreshSandbox();
     return undefined;
   }
 
@@ -405,13 +447,29 @@ export function ChatView({
               </Link>
             </>
           )}
+          {sandbox && (
+            <span className="ml-auto inline-flex h-8 items-center gap-2 rounded-full border bg-background/80 pr-1 pl-3 text-xs">
+              <span aria-hidden className="size-2 rounded-full bg-primary" />
+              Sandbox on
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Stop the sandbox"
+                title="Stop the sandbox (its files go with it)"
+                disabled={isStopping}
+                onClick={() => void stopSandbox()}
+              >
+                <SquareIcon aria-hidden />
+              </Button>
+            </span>
+          )}
           {threadId && (
             <Button
               variant="secondary"
               size="sm"
               disabled={isDeleting || isBusy}
               onClick={() => void deleteChat()}
-              className="ml-auto"
+              className={sandbox ? undefined : 'ml-auto'}
             >
               <Trash2Icon aria-hidden />
               Delete chat

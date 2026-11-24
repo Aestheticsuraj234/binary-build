@@ -21,6 +21,7 @@ export function toAgentSummary(row: AgentRow): AgentSummary {
     model: row.model,
     templateId: row.templateId,
     approvalMode: row.approvalMode,
+    computer: row.computer,
   };
 }
 

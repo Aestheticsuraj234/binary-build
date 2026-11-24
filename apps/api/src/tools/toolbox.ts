@@ -1,8 +1,10 @@
 import type {ToolSource} from '@binary/db';
 import type {ApprovalMode, ToolRisk, ToolSummary} from '@binary/shared';
 import {decideTool} from '@binary/shared';
-import type {FlexibleSchema, ToolSet} from 'ai';
+import type {FlexibleSchema, JSONValue, ToolSet} from 'ai';
 import {tool} from 'ai';
+
+import {forModel} from '../sandbox/images';
 
 /** A tool Binary can offer, built in or from an app. */
 export interface BinaryTool {
@@ -115,6 +117,11 @@ export class Toolbox {
           }
           return binaryTool.run(input, abortSignal);
         },
+        // Images (charts) are for the person: the model gets a note instead.
+        toModelOutput: ({output}) => ({
+          type: 'json',
+          value: (forModel(output) ?? null) as JSONValue,
+        }),
       });
     }
     return set;

@@ -1,5 +1,5 @@
 import type {ApprovalMode} from '@binary/shared';
-import {characterOf} from '@binary/shared';
+import {characterOf, SANDBOX_IDLE_MINUTES} from '@binary/shared';
 
 /** The parts of an agent that shape how it answers. */
 export interface AgentProfile {
@@ -60,7 +60,13 @@ export function buildSystemPrompt(
   {
     unavailableApps = [],
     run,
-  }: {unavailableApps?: string[]; run?: RunContext} = {},
+    sandbox,
+  }: {
+    unavailableApps?: string[];
+    run?: RunContext;
+    /** Set when the character has a cloud sandbox: whether it's working. */
+    sandbox?: 'on' | 'off';
+  } = {},
 ): string {
   const character = characterOf(agent.avatar);
   const lines = [
@@ -85,6 +91,27 @@ export function buildSystemPrompt(
   lines.push('', TOOL_RULES[mode]);
   if (mode !== 'plan_only') {
     lines.push(ASKING);
+  }
+  if (sandbox === 'on' && mode !== 'plan_only') {
+    lines.push(
+      '',
+      'You have a cloud sandbox for this chat: a private Linux machine with ' +
+        'Python, Node and internet access, working in /home/user. Use ' +
+        'run_code for Python or JavaScript, run_command for the shell, and ' +
+        'write_file, read_file and list_files for files. Running code, ' +
+        'commands and writing files ask the person first, and they see your ' +
+        'exact code, so keep it short and readable. Files stay while the ' +
+        `sandbox runs; it stops after ${SANDBOX_IDLE_MINUTES} idle minutes ` +
+        'and its files go with it. Charts you draw are shown to the person, ' +
+        "but you can't see them: describe what you plotted from the data.",
+    );
+  } else if (sandbox === 'off' && mode !== 'plan_only') {
+    lines.push(
+      '',
+      'You are meant to have a cloud sandbox, but it is turned off on this ' +
+        "Binary (there's no E2B key), so you can't run code. Say so if the " +
+        'person asks you to.',
+    );
   }
   if (unavailableApps.length > 0 && mode !== 'plan_only') {
     lines.push(

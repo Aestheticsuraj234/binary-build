@@ -3,7 +3,7 @@ import {fetch} from 'expo/fetch';
 import {authClient} from '@/lib/auth-client';
 
 // Written to apps/mobile/.env.local by `pnpm run setup`.
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 /** An error the API sent back, with a message that is safe to show. */
 export class ApiError extends Error {

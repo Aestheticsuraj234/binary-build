@@ -1,4 +1,8 @@
-import type {AppWithTools, ToolsOverview} from '@binary/shared';
+import type {
+  AppWithTools,
+  SandboxesOverview,
+  ToolsOverview,
+} from '@binary/shared';
 import {
   colors,
   connectAppSchema,
@@ -6,6 +10,7 @@ import {
   fontWeight,
   radius,
   RISK_INFO,
+  SANDBOX_SETUP_HINT,
   spacing,
   TOOL_RISKS,
   validate,
@@ -207,6 +212,82 @@ function AppCard({
   );
 }
 
+/** Running cloud sandboxes with Stop, or how to turn them on. */
+function SandboxesSection() {
+  const router = useRouter();
+  const overview = useApi<SandboxesOverview>('/api/sandboxes');
+
+  function confirmStop(id: string) {
+    Alert.alert('Stop this sandbox?', 'Its files go with it.', [
+      {text: 'Keep it', style: 'cancel'},
+      {
+        text: 'Stop',
+        style: 'destructive',
+        onPress: () => {
+          apiJson(`/api/sandboxes/${id}/stop`, {method: 'POST'})
+            .then(() => overview.reload())
+            .catch((caught: unknown) =>
+              Alert.alert(
+                "Couldn't stop it",
+                caught instanceof Error ? caught.message : String(caught),
+              ),
+            );
+        },
+      },
+    ]);
+  }
+
+  return (
+    <>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
+        Cloud sandboxes
+      </Text>
+      {!overview.data ? (
+        overview.error ? (
+          <Text style={styles.alert}>{overview.error}</Text>
+        ) : (
+          <ActivityIndicator color={colors.accent} />
+        )
+      ) : !overview.data.available ? (
+        <Text style={styles.muted}>{SANDBOX_SETUP_HINT}</Text>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.muted}>
+            One private Linux machine per chat. It stops after{' '}
+            {overview.data.idleMinutes} idle minutes, with its files.
+          </Text>
+          {overview.data.sandboxes.length === 0 ? (
+            <Text style={styles.muted}>No sandbox is running.</Text>
+          ) : (
+            overview.data.sandboxes.map(sandbox => (
+              <View key={sandbox.id} style={styles.appHeader}>
+                <Pressable
+                  accessibilityRole="link"
+                  onPress={() => router.push(`/chats/${sandbox.threadId}`)}
+                  style={styles.appTitle}
+                >
+                  <Text style={styles.cardTitle}>
+                    {sandbox.threadTitle ?? 'Untitled chat'}
+                  </Text>
+                  <Text style={styles.muted}>{sandbox.agentName}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Stop the sandbox for ${sandbox.threadTitle ?? 'this chat'}`}
+                  onPress={() => confirmStop(sandbox.id)}
+                  hitSlop={8}
+                >
+                  <Text style={styles.remove}>Stop</Text>
+                </Pressable>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+    </>
+  );
+}
+
 /** A link to the Integrations screen. */
 function IntegrationsLink() {
   const router = useRouter();
@@ -289,6 +370,7 @@ export default function AppsScreen() {
             ))}
           </>
         )}
+        <SandboxesSection />
         <IntegrationsLink />
       </ScrollView>
     </KeyboardAvoidingView>

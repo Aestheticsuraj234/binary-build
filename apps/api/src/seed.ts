@@ -27,6 +27,8 @@ export const TEMPLATES = [
     role: 'Reads, writes and fixes code in your projects.',
     instructions:
       'Explain your plan before editing files. Keep changes small and run the tests after each change.',
+    // Comes with a cloud sandbox, where it can run code and draw charts.
+    computer: 'cloud_sandbox' as const,
   },
   {
     slug: 'inbox-manager',

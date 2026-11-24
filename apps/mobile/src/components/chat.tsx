@@ -3,6 +3,8 @@ import type {
   ChatEvent,
   ChatMessage,
   Mood,
+  SandboxesOverview,
+  SandboxSummary,
   ThreadSummary,
   ToolCallRecord,
 } from '@binary/shared';
@@ -83,6 +85,8 @@ interface ChatProps {
   initialMessages: ChatMessage[];
   /** A fired agent's chat can be read but not continued. */
   isFired: boolean;
+  /** The chat's running cloud sandbox, if any. */
+  initialSandbox?: SandboxSummary | null;
 }
 
 /**
@@ -96,10 +100,47 @@ export function Chat({
   thread,
   initialMessages,
   isFired,
+  initialSandbox = null,
 }: ChatProps) {
   const router = useRouter();
   const character = characterOf(agent.avatar);
   const [threadId, setThreadId] = useState(thread?.id ?? null);
+  const [sandbox, setSandbox] = useState(initialSandbox);
+
+  /** Checks whether this chat's sandbox runs, after something may have started it. */
+  function refreshSandbox(id: string | null = threadId) {
+    if (agent.computer !== 'cloud_sandbox' || !id) {
+      return;
+    }
+    apiJson<SandboxesOverview>('/api/sandboxes')
+      .then(body =>
+        setSandbox(body.sandboxes.find(s => s.threadId === id) ?? null),
+      )
+      .catch(() => {});
+  }
+
+  function confirmStopSandbox() {
+    if (!sandbox) {
+      return;
+    }
+    Alert.alert('Stop the sandbox?', 'Its files go with it.', [
+      {text: 'Keep it', style: 'cancel'},
+      {
+        text: 'Stop',
+        style: 'destructive',
+        onPress: () => {
+          apiJson(`/api/sandboxes/${sandbox.id}/stop`, {method: 'POST'})
+            .then(() => setSandbox(null))
+            .catch((error: unknown) =>
+              Alert.alert(
+                "Couldn't stop it",
+                error instanceof Error ? error.message : String(error),
+              ),
+            );
+        },
+      },
+    ]);
+  }
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState('');
   const [mood, setMood] = useState<Mood>('idle');
@@ -213,6 +254,7 @@ export function Chat({
               ...event.message,
               isStreaming: false,
             }));
+            refreshSandbox(id);
           }
         }
       }
@@ -297,6 +339,7 @@ export function Chat({
     });
     setMood('happy');
     happyTimer.current = setTimeout(() => setMood('idle'), 2500);
+    refreshSandbox();
     return undefined;
   }
 
@@ -406,6 +449,20 @@ export function Chat({
         </View>
       </View>
 
+      {sandbox && (
+        <View style={styles.sandbox}>
+          <View style={styles.sandboxDot} />
+          <Text style={styles.sandboxText}>Sandbox on</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stop the sandbox"
+            onPress={confirmStopSandbox}
+            hitSlop={8}
+          >
+            <Text style={styles.sandboxStop}>Stop</Text>
+          </Pressable>
+        </View>
+      )}
       <ScrollView
         ref={scrollRef}
         style={styles.messages}
@@ -537,6 +594,27 @@ export function Chat({
 }
 
 const styles = StyleSheet.create({
+  sandbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  sandboxDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+  },
+  sandboxText: {flex: 1, color: colors.textMuted, fontSize: fontSize.sm},
+  sandboxStop: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
   note: {
     alignSelf: 'center',
     textAlign: 'center',

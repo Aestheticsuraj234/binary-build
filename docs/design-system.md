@@ -184,6 +184,21 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
   itself with Tailwind classes. `app/globals.css` points Tailwind at its files
   with `@source`; if that path is wrong, answers lose their styles silently.
 
+## Cloud sandboxes
+
+- Hiring and editing have **Computer**: None or Cloud sandbox, cards on the
+  web and pills on the phone. Without an E2B key, Cloud sandbox is greyed
+  out with how to turn it on.
+- A request to run code **starts open** and shows the code itself (a
+  Python, JavaScript or Shell label over a mono block), not JSON, in the
+  chat and in Today.
+- **Charts** sit under their tool card, full width on white, so axes stay
+  readable on the dark theme.
+- While a chat's sandbox runs, the stage's top row shows a **Sandbox on**
+  pill (lime dot) with a square Stop button; the phone shows the same
+  above the messages. Apps & tools lists running sandboxes, each with
+  **Stop**.
+
 ## Today
 
 - **Today** is first in the main links, with an amber count of requests

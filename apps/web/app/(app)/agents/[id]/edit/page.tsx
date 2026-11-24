@@ -7,7 +7,7 @@ import {AgentForm} from '@/components/agents/agent-form';
 import {NeedsKey} from '@/components/agents/needs-key';
 import {PageHeading} from '@/components/agents/page-heading';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchAgent, fetchKeyStatuses} from '@/lib/api';
+import {fetchAgent, fetchKeyStatuses, fetchSandboxes} from '@/lib/api';
 import {connectedProviders} from '@/lib/providers';
 
 export const metadata: Metadata = {title: 'Edit agent · Binary'};
@@ -18,7 +18,11 @@ async function EditAgent({
   params: PageProps<'/agents/[id]/edit'>['params'];
 }) {
   const {id} = await params;
-  const [agent, keys] = await Promise.all([fetchAgent(id), fetchKeyStatuses()]);
+  const [agent, keys, sandboxes] = await Promise.all([
+    fetchAgent(id),
+    fetchKeyStatuses(),
+    fetchSandboxes(),
+  ]);
   if (!agent) {
     notFound();
   }
@@ -58,6 +62,7 @@ async function EditAgent({
         mode="edit"
         agentId={agent.id}
         connectedProviders={providers}
+        sandboxesAvailable={sandboxes.available}
         initial={{
           name: agent.name,
           role: agent.role,
@@ -66,6 +71,7 @@ async function EditAgent({
           provider,
           model,
           approvalMode: agent.approvalMode,
+          computer: agent.computer,
         }}
       />
     </>

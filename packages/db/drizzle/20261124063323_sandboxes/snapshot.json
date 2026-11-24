@@ -1,0 +1,790 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c7ff915a-6947-45eb-a32b-de127a837528",
+  "prevIds": [
+    "77bcec3c-8879-48a6-b021-296e936bd14e"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "sandboxes"
+      ],
+      "writes": [
+        "s|tbl|public.sandboxes",
+        "n|tbl|public.sandboxes",
+        "e|tbl|public.sandboxes",
+        "n|rel|public.sandboxes",
+        "n|type|public.sandboxes",
+        "n|rel|public.sandboxes_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tool_images"
+      ],
+      "writes": [
+        "s|tbl|public.tool_images",
+        "n|tbl|public.tool_images",
+        "e|tbl|public.tool_images",
+        "n|rel|public.tool_images",
+        "n|type|public.tool_images",
+        "n|rel|public.tool_images_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_templates",
+        "computer"
+      ],
+      "writes": [
+        "s|col|public.agent_templates.computer",
+        "n|col|public.agent_templates.computer",
+        "e|col|public.agent_templates.computer"
+      ],
+      "reads": [
+        "n|tbl|public.agent_templates",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agents",
+        "computer"
+      ],
+      "writes": [
+        "s|col|public.agents.computer",
+        "n|col|public.agents.computer",
+        "e|col|public.agents.computer"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sandboxes",
+        "sandboxes_running_thread_idx"
+      ],
+      "writes": [
+        "s|idx|public.sandboxes_running_thread_idx",
+        "n|idx|public.sandboxes_running_thread_idx",
+        "e|idx|public.sandboxes_running_thread_idx",
+        "n|rel|public.sandboxes_running_thread_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|col|public.sandboxes.thread_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sandboxes",
+        "sandboxes_user_id_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.sandboxes_user_id_status_idx",
+        "n|idx|public.sandboxes_user_id_status_idx",
+        "e|idx|public.sandboxes_user_id_status_idx",
+        "n|rel|public.sandboxes_user_id_status_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|col|public.sandboxes.user_id",
+        "n|col|public.sandboxes.status"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tool_images",
+        "tool_images_thread_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.tool_images_thread_id_idx",
+        "n|idx|public.tool_images_thread_id_idx",
+        "e|idx|public.tool_images_thread_id_idx",
+        "n|rel|public.tool_images_thread_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.tool_images",
+        "n|sch|public",
+        "n|col|public.tool_images.thread_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "sandboxes"
+      ],
+      "writes": [
+        "s|fk|public.sandboxes.sandboxes_user_id_user_id_fkey",
+        "n|fk|public.sandboxes.sandboxes_user_id_user_id_fkey",
+        "e|fk|public.sandboxes.sandboxes_user_id_user_id_fkey",
+        "n|con|public.sandboxes.sandboxes_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.sandboxes.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "sandboxes"
+      ],
+      "writes": [
+        "s|fk|public.sandboxes.sandboxes_thread_id_threads_id_fkey",
+        "n|fk|public.sandboxes.sandboxes_thread_id_threads_id_fkey",
+        "e|fk|public.sandboxes.sandboxes_thread_id_threads_id_fkey",
+        "n|con|public.sandboxes.sandboxes_thread_id_threads_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|tbl|public.threads",
+        "n|sch|public",
+        "n|col|public.sandboxes.thread_id",
+        "n|col|public.threads.id",
+        "e|uniqueness|public.threads.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "sandboxes"
+      ],
+      "writes": [
+        "s|fk|public.sandboxes.sandboxes_agent_id_agents_id_fkey",
+        "n|fk|public.sandboxes.sandboxes_agent_id_agents_id_fkey",
+        "e|fk|public.sandboxes.sandboxes_agent_id_agents_id_fkey",
+        "n|con|public.sandboxes.sandboxes_agent_id_agents_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sandboxes",
+        "n|sch|public",
+        "n|tbl|public.agents",
+        "n|sch|public",
+        "n|col|public.sandboxes.agent_id",
+        "n|col|public.agents.id",
+        "e|uniqueness|public.agents.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "tool_images"
+      ],
+      "writes": [
+        "s|fk|public.tool_images.tool_images_user_id_user_id_fkey",
+        "n|fk|public.tool_images.tool_images_user_id_user_id_fkey",
+        "e|fk|public.tool_images.tool_images_user_id_user_id_fkey",
+        "n|con|public.tool_images.tool_images_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.tool_images",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.tool_images.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "tool_images"
+      ],
+      "writes": [
+        "s|fk|public.tool_images.tool_images_thread_id_threads_id_fkey",
+        "n|fk|public.tool_images.tool_images_thread_id_threads_id_fkey",
+        "e|fk|public.tool_images.tool_images_thread_id_threads_id_fkey",
+        "n|con|public.tool_images.tool_images_thread_id_threads_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.tool_images",
+        "n|sch|public",
+        "n|tbl|public.threads",
+        "n|sch|public",
+        "n|col|public.tool_images.thread_id",
+        "n|col|public.threads.id",
+        "e|uniqueness|public.threads.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "sandboxes",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tool_images",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_templates",
+        "name": "computer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'none'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agents",
+        "name": "computer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'none'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "thread_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "agent_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "provider",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "external_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'running'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "started_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "last_used_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "stopped_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "thread_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "mime",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "data",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_running_thread_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "thread_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"status\" = 'running'",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_user_id_status_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "tool_images_thread_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "thread_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_thread_id_threads_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "thread_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "threads",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_agent_id_agents_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "agent_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "agents",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "tool_images_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "tool_images_thread_id_threads_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "thread_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "threads",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sandboxes",
+        "name": "sandboxes_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tool_images",
+        "name": "tool_images_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

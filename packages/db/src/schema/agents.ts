@@ -9,6 +9,10 @@ export const agentTemplates = pgTable('agent_templates', {
   name: text('name').notNull(),
   role: text('role').notNull(),
   instructions: text('instructions').notNull(),
+  /** The computer a character hired from it starts with. */
+  computer: text('computer', {enum: ['none', 'cloud_sandbox']})
+    .notNull()
+    .default('none'),
   createdAt: timestamp('created_at', {withTimezone: true})
     .defaultNow()
     .notNull(),
@@ -44,6 +48,10 @@ export const agents = pgTable(
     })
       .notNull()
       .default('auto_reads'),
+    /** Its computer: none, or a cloud sandbox per chat. */
+    computer: text('computer', {enum: ['none', 'cloud_sandbox']})
+      .notNull()
+      .default('none'),
     /**
      * Set when the agent is fired. A fired agent leaves the crew, but its
      * chats can still be read, so the row stays.

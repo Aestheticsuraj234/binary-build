@@ -1,4 +1,5 @@
 import type {AgentSummary, ProviderKeyStatus} from '@binary/shared';
+import type {SandboxesOverview} from '@binary/shared';
 import {characterOf, colors, getProvider, spacing} from '@binary/shared';
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
@@ -11,6 +12,7 @@ import {useApi} from '@/hooks/use-api';
 export default function EditAgentScreen() {
   const {id} = useLocalSearchParams<{id: string}>();
   const agent = useApi<{agent: AgentSummary}>(`/api/agents/${id}`);
+  const sandboxes = useApi<SandboxesOverview>('/api/sandboxes');
   const keys = useApi<{keys: ProviderKeyStatus[]}>('/api/keys');
 
   if (!agent.data || !keys.data) {
@@ -57,6 +59,7 @@ export default function EditAgentScreen() {
         mode="edit"
         agentId={current.id}
         connectedProviders={providers}
+        sandboxesAvailable={sandboxes.data?.available ?? false}
         initial={{
           name: current.name,
           role: current.role,
@@ -65,6 +68,7 @@ export default function EditAgentScreen() {
           provider,
           model,
           approvalMode: current.approvalMode,
+          computer: current.computer,
         }}
       />
     </>

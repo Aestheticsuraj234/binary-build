@@ -22,7 +22,9 @@ export type ToolSource =
   /** An MCP app's tool, by the app's id and the tool's own name. */
   | {kind: 'app'; appId: string; tool: string}
   /** A Composio tool, by its slug (e.g. GMAIL_SEND_EMAIL). */
-  | {kind: 'composio'; slug: string};
+  | {kind: 'composio'; slug: string}
+  /** A cloud sandbox tool, run in the request's chat's sandbox. */
+  | {kind: 'sandbox'; tool: string};
 
 /**
  * A tool call waiting for the person's OK. It's a row, not a waiting

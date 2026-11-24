@@ -16,6 +16,9 @@ import {appsRoutes} from './routes/apps';
 import {integrationsRoutes} from './routes/integrations';
 import {approvalsRoutes, todayRoutes} from './routes/approvals';
 import {hooksRoutes} from './routes/hooks';
+import {imagesRoutes, sandboxesRoutes} from './routes/sandboxes';
+import {SandboxManager} from './sandbox/manager';
+import type {SandboxProvider} from './sandbox/provider';
 import {routinesRoutes} from './routes/routines';
 import {settingsRoutes} from './routes/settings';
 import {threadsRoutes} from './routes/threads';
@@ -44,6 +47,8 @@ export interface AppOptions {
   webUrl?: string;
   /** The API's public address, for webhook URLs. */
   apiUrl?: string;
+  /** Where cloud sandboxes come from, or null when they're off. */
+  sandboxProvider?: SandboxProvider | null;
   /**
    * Where routines run: Trigger.dev, or (the default) inside the API with
    * no schedules.
@@ -66,6 +71,7 @@ export function createApp({
   webUrl = 'http://localhost:3000',
   apiUrl = 'http://localhost:3001',
   jobRunner,
+  sandboxProvider = null,
 }: AppOptions) {
   const app = new Hono();
   // Typed errors thrown anywhere become `{code, message}` JSON.
@@ -73,11 +79,19 @@ export function createApp({
 
   app.get('/health', c => c.json({ok: true}));
 
+  const sandboxes = new SandboxManager(db, sandboxProvider);
   const jobs =
     jobRunner ??
     new InProcessRunner(
       db,
-      createRoutineExecutor({db, vault, buildModel, builtInTools, composio}),
+      createRoutineExecutor({
+        db,
+        vault,
+        buildModel,
+        builtInTools,
+        composio,
+        sandboxes,
+      }),
     );
   const routines = new RoutineService(db, jobs);
 
@@ -103,15 +117,17 @@ export function createApp({
   signedIn.route('/apps', appsRoutes({db, vault, builtInTools}));
   signedIn.route(
     '/threads',
-    threadsRoutes({db, vault, engineFor, builtInTools, composio}),
+    threadsRoutes({db, vault, engineFor, builtInTools, composio, sandboxes}),
   );
   signedIn.route('/integrations', integrationsRoutes({db, composio, webUrl}));
   signedIn.route('/routines', routinesRoutes({db, service: routines, apiUrl}));
   signedIn.route('/settings', settingsRoutes({db, service: routines}));
   signedIn.route(
     '/approvals',
-    approvalsRoutes({db, vault, builtInTools, composio, engineFor}),
+    approvalsRoutes({db, vault, builtInTools, composio, engineFor, sandboxes}),
   );
+  signedIn.route('/sandboxes', sandboxesRoutes(sandboxes));
+  signedIn.route('/images', imagesRoutes(db));
   signedIn.route('/today', todayRoutes(db));
   app.route('/api', signedIn);
 

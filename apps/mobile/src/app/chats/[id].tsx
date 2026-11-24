@@ -65,6 +65,7 @@ export default function SavedChatScreen() {
       thread={thread}
       initialMessages={messages}
       isFired={isFired}
+      initialSandbox={detail.sandbox}
     />
   );
 }

@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import type {ToolImage} from './computers';
+
 /**
  * How much a tool can do. Every tool has one.
  *
@@ -85,6 +87,8 @@ export interface ToolCallRecord {
   error?: string;
   /** The approval request, while it's `waiting` and after it's decided. */
   approvalId?: string;
+  /** Images it made for the person (charts). The model never sees them. */
+  images?: ToolImage[];
 }
 
 export const APP_NAME_MAX_LENGTH = 40;

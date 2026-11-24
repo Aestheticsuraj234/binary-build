@@ -7,6 +7,7 @@ import {createApp} from '../src/app';
 import {createAuth} from '../src/auth';
 import type {ModelBuilder} from '../src/engine/factory';
 import type {JobRunner} from '../src/jobs/job-runner';
+import type {SandboxProvider} from '../src/sandbox/provider';
 import type {ComposioGateway} from '../src/tools/composio';
 import type {BinaryTool} from '../src/tools/toolbox';
 import type {Vault} from '../src/vault';
@@ -27,6 +28,8 @@ export function createTestApp(
     composio?: ComposioGateway | null;
     /** Builds the job runner from the test app's database and vault. */
     jobRunner?: (deps: {db: Database; vault: Vault}) => JobRunner;
+    /** Cloud sandboxes (a fake in tests), or none. */
+    sandboxProvider?: SandboxProvider | null;
   } = {},
 ) {
   const db: Database = createDb(TEST_DATABASE_URL);
@@ -49,6 +52,7 @@ export function createTestApp(
     webUrl: WEB_URL,
     apiUrl: API_URL,
     jobRunner: options.jobRunner?.({db, vault}),
+    sandboxProvider: options.sandboxProvider ?? null,
   });
   return {app, db, vault};
 }

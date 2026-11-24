@@ -8,6 +8,8 @@ import {
   spacing,
 } from '@binary/shared';
 import {useState} from 'react';
+
+import {CodeView, ToolImages} from '@/components/tool-media';
 import {
   ActivityIndicator,
   Platform,
@@ -173,8 +175,11 @@ export function ToolCallCard({
   onDecide?: (decision: 'approve' | 'reject') => Promise<string | undefined>;
 }) {
   const isWaiting = call.status === 'waiting';
+  // A request starts open, so its exact input is seen before approving.
   const [isOpen, setIsOpen] = useState(
-    call.status === 'blocked' || call.status === 'failed',
+    call.status === 'blocked' ||
+      call.status === 'failed' ||
+      call.status === 'waiting',
   );
   const name = call.name.replace(/[_-]+/g, ' ');
   return (
@@ -228,12 +233,15 @@ export function ToolCallCard({
               {call.error}
             </Text>
           ) : null}
-          <Block label="Input" value={call.input} />
+          {CodeView({name: call.name, input: call.input}) ?? (
+            <Block label="Input" value={call.input} />
+          )}
           {call.status === 'done' && (
             <Block label="Result" value={call.output} />
           )}
         </View>
       )}
+      <ToolImages images={call.images} />
       {isWaiting && (
         <View style={styles.waiting}>
           {onDecide ? (

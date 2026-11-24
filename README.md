@@ -11,7 +11,8 @@ with a Playground to try it (chapter 3), and agents you hire, each played by
 a cartoon character, on the web and the phone (chapter 4), and routines that
 run on a schedule, from a webhook or on demand, as durable jobs on
 Trigger.dev (chapter 7), and approvals: risky tools ask for your OK in the
-chat and in a Today inbox (chapter 8).
+chat and in a Today inbox (chapter 8), and cloud sandboxes from E2B where
+characters run code and draw charts (chapter 9).
 
 ## What's inside
 
@@ -248,6 +249,38 @@ approvals existed got it too, so what they already did doesn't change.
   policy is what guards them.
 - Requests don't expire yet. Approving waits for the tool and the
   follow-up, so a slow tool makes the button slow.
+
+## How cloud sandboxes work
+
+A character's **computer** (Edit → Computer) can be a **cloud sandbox**: a
+private Linux machine from [E2B](https://e2b.dev), one per chat, with
+Python, Node, a Jupyter kernel and internet access. The Coding Agent
+template comes with one.
+
+1. Get a key at [e2b.dev/dashboard](https://e2b.dev/dashboard) (the free
+   tier is enough), put it in `.env` as `E2B_API_KEY`, and restart
+   `pnpm dev`.
+2. Give a character a cloud sandbox and ask it to _"Plot the squares of 1
+   to 10"_. It asks to run its code; you see the exact code, approve, and
+   the chart shows up in the chat.
+
+- **Tools** (`apps/api/src/sandbox/tools.ts`): `run_code` (Python or
+  JavaScript), `run_command` and `write_file` are `computer` tools, so they
+  always ask first, in every mode but Plan only. `read_file` and
+  `list_files` are `read` and never start a sandbox.
+- **Lifecycle** (`apps/api/src/sandbox/manager.ts`): a chat's sandbox starts
+  on the first approved run, is reused while it lives (so a file written in
+  one message can be read in the next), and stops after **5 idle minutes**,
+  with **Stop** (the chat header, or Apps & tools), or when the chat is
+  deleted. The next run after that starts a fresh one, without the old
+  files. A unique index keeps it to one sandbox per chat, even when two
+  runs start at once.
+- **Charts are for you.** Images a run makes are saved (`tool_images`) and
+  shown under the tool card, from `GET /api/images/:id`. The model only
+  reads "Made 1 chart. The person can see it in the chat; you cannot."
+- **Optional.** Without `E2B_API_KEY`, characters get no sandbox tools,
+  the system prompt says so, and the forms and Apps & tools say how to turn
+  it on. Tests use a fake provider, never E2B.
 
 ## How routines work
 

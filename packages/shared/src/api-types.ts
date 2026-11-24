@@ -1,4 +1,5 @@
 import type {ApprovalMode} from './approvals';
+import type {Computer, SandboxSummary} from './computers';
 import type {ProviderId} from './providers';
 import type {ToolCallRecord} from './tools';
 
@@ -73,6 +74,8 @@ export interface ThreadDetail {
   /** A fired agent's chats can be read, but not continued. */
   isFired: boolean;
   messages: ChatMessage[];
+  /** This chat's running sandbox, if any. */
+  sandbox: SandboxSummary | null;
 }
 
 /** Error codes the API returns as `{code, message}` with a 4xx status. */
@@ -109,6 +112,8 @@ export interface AgentSummary {
   templateId: string | null;
   /** How freely it may use tools. */
   approvalMode: ApprovalMode;
+  /** Its computer, if any. */
+  computer: Computer;
 }
 
 /** A ready-made starting point for a new agent. */
@@ -120,4 +125,6 @@ export interface AgentTemplateSummary {
   instructions: string;
   /** The character who plays this template (a `CharacterId`). */
   character: string;
+  /** The computer a character hired from it starts with. */
+  computer: Computer;
 }

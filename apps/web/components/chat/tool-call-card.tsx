@@ -1,7 +1,7 @@
 'use client';
 
 import type {ToolCallRecord} from '@binary/shared';
-import {readableToolName} from '@binary/shared';
+import {readableToolName, toolImagePath} from '@binary/shared';
 import {cn} from 'cn';
 import {
   BanIcon,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import {useState} from 'react';
 
+import {ToolInput} from '@/components/chat/tool-input';
 import {RiskBadge} from '@/components/tools/risk-badge';
 import {Button} from '@/components/ui/button';
 import {Spinner} from '@/components/ui/spinner';
@@ -134,7 +135,9 @@ export function ToolCallCard({
   onDecide?: (decision: 'approve' | 'reject') => Promise<string | undefined>;
 }) {
   const isWaiting = call.status === 'waiting';
-  const startsOpen = call.status === 'blocked' || call.status === 'failed';
+  // A request starts open, so its exact input is seen before approving.
+  const startsOpen =
+    isWaiting || call.status === 'blocked' || call.status === 'failed';
   return (
     <div
       className={cn(
@@ -176,7 +179,7 @@ export function ToolCallCard({
               {call.error}
             </p>
           )}
-          <Block label="Input" value={call.input} />
+          <ToolInput name={call.name} input={call.input} />
           {call.status === 'done' && (
             <Block label="Result" value={call.output} />
           )}
@@ -187,6 +190,17 @@ export function ToolCallCard({
           )}
         </div>
       </details>
+      {call.images?.map(image => (
+        // Charts are for the person; the model never sees them.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={image.id}
+          src={toolImagePath(image.id)}
+          alt={`Chart from ${readableToolName(call.name)}`}
+          className="block w-full border-t bg-white"
+          loading="lazy"
+        />
+      ))}
       {isWaiting && (
         <div className="border-t border-warning/40 px-3 py-2">
           {onDecide ? (

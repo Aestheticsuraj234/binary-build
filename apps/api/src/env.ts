@@ -68,6 +68,15 @@ const envSchema = z.object({
     .optional()
     .transform(key => (key && !isPlaceholderSecret(key) ? key : undefined)),
   /**
+   * Optional. Gives characters cloud sandboxes from E2B (e2b.dev) to run
+   * code in. Without it, characters have no sandbox.
+   */
+  E2B_API_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform(key => (key && !isPlaceholderSecret(key) ? key : undefined)),
+  /**
    * Optional. Runs routines on Trigger.dev, with real schedules. Without
    * it, runs happen inside the API and schedules don't fire.
    */
@@ -86,6 +95,7 @@ const workerEnvSchema = envSchema.pick({
   DATABASE_URL: true,
   ENCRYPTION_KEY: true,
   COMPOSIO_API_KEY: true,
+  E2B_API_KEY: true,
 });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

@@ -140,6 +140,7 @@ export default function RoutineScreen() {
           model: null,
           templateId: null,
           approvalMode: DEFAULT_APPROVAL_MODE,
+          computer: 'none' as const,
         },
         ...agents.data.agents,
       ];
