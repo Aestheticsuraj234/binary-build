@@ -5,6 +5,8 @@ import type {
   AgentTemplateSummary,
   IntegrationsCatalog,
   ProviderKeyStatus,
+  RoutineDetail,
+  RoutinesOverview,
   ThreadDetail,
   ThreadSummary,
   ToolsOverview,
@@ -100,4 +102,16 @@ export const fetchIntegrations = cache(
       body ?? {available: false, integrations: [], categories: [], error: null}
     );
   },
+);
+
+/** This person's routines, and whether their schedules can fire. */
+export const fetchRoutines = cache(async (): Promise<RoutinesOverview> => {
+  const body = await apiGet<RoutinesOverview>('/api/routines');
+  return body ?? {routines: [], schedulesEnabled: false, timeZone: null};
+});
+
+/** One routine with its runs, or null if it doesn't exist or isn't theirs. */
+export const fetchRoutine = cache(
+  async (id: string): Promise<RoutineDetail | null> =>
+    apiGet<RoutineDetail>(`/api/routines/${encodeURIComponent(id)}`),
 );

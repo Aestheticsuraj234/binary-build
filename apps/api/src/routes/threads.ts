@@ -12,7 +12,6 @@ import {
   CHAT_CONTEXT_MESSAGES,
   contextWindow,
   getProvider,
-  runsWithoutAsking,
   sendMessageSchema,
   startChatSchema,
   titleFromMessage,
@@ -20,7 +19,7 @@ import {
 import type {Context} from 'hono';
 import {Hono} from 'hono';
 
-import {buildSystemPrompt} from '../agents/system-prompt';
+import {generateAnswer} from '../chat/answer';
 import type {Engine} from '../engine/engine';
 import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
@@ -34,11 +33,10 @@ import {
 } from '../errors';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
-import {loadUserToolbox} from '../tools/user-tools';
 import type {Vault} from '../vault';
 import {VaultError} from '../vault';
 import {toAgentSummary} from './agents';
-import {engineErrorMessage, ndjsonResponse} from './stream-answer';
+import {ndjsonResponse} from './stream-answer';
 
 interface ThreadsRouteOptions {
   db: Database;
@@ -47,14 +45,6 @@ interface ThreadsRouteOptions {
   builtInTools: () => BinaryTool[];
   composio: ComposioGateway | null;
 }
-
-/** How many model calls one answer may take (each tool round trip is one). */
-const MAX_STEPS = 6;
-
-/** What the person sees on a blocked tool call. */
-export const BLOCKED_FOR_PERSON =
-  'This tool can change things outside Binary, so it needs your approval. ' +
-  'Approvals arrive in a later chapter.';
 
 export function toThreadSummary(
   thread: ThreadRow,
@@ -197,78 +187,22 @@ export function threadsRoutes({
         userMessage: toChatMessage(question),
       });
 
-      // Built-in tools plus every app that answers. An app that's down is
-      // left out, and the chat carries on without it.
-      const tools = await loadUserToolbox(
-        db,
-        vault,
-        userId,
-        builtInTools(),
-        composio,
+      const outcome = await generateAnswer(
+        {db, vault, builtInTools, composio},
+        {engine, agent, userId, prompt: message, history},
+        send,
       );
-      const calls = new Map<string, ToolCallRecord>();
-      const report = (call: ToolCallRecord) => {
-        calls.set(call.id, call);
-        send({type: 'tool', call});
-      };
-
-      let answer = '';
-      try {
-        // No abort signal on purpose: if the person closes the tab, the
-        // answer still finishes and is saved for when they come back.
-        for await (const part of engine.stream({
-          prompt: message,
-          history,
-          // Rebuilt from the saved profile every time, so edits apply at once.
-          system: buildSystemPrompt(agent, {
-            unavailableApps: tools.unavailable,
-          }),
-          tools: tools.toolbox.toToolSet(),
-          maxSteps: MAX_STEPS,
-        })) {
-          if (part.type === 'text') {
-            answer += part.text;
-            send({type: 'delta', text: part.text});
-          } else if (part.type === 'tool-call') {
-            const risk = tools.toolbox.riskOf(part.name);
-            const allowed = runsWithoutAsking(risk);
-            report({
-              id: part.id,
-              name: part.name,
-              risk,
-              input: part.input,
-              status: allowed ? 'running' : 'blocked',
-              ...(allowed ? {} : {error: BLOCKED_FOR_PERSON}),
-            });
-          } else {
-            const call = calls.get(part.id);
-            // A blocked call stays blocked: nothing ran, whatever comes back.
-            if (!call || call.status === 'blocked') {
-              continue;
-            }
-            report(
-              part.type === 'tool-result'
-                ? {...call, status: 'done', output: part.output}
-                : {...call, status: 'failed', error: part.error},
-            );
-          }
-        }
-      } catch (error) {
+      if (!outcome.ok) {
         // A part-way answer stays on their screen, but isn't saved.
-        send({type: 'error', message: engineErrorMessage(error)});
-        return;
-      } finally {
-        await tools.close();
-      }
-
-      if (!answer.trim() && calls.size === 0) {
-        send({type: 'error', message: `${name} sent back an empty answer.`});
+        send({type: 'error', message: outcome.error});
         return;
       }
       try {
-        const saved = await threads.addAnswer(thread.id, answer, [
-          ...calls.values(),
-        ]);
+        const saved = await threads.addAnswer(
+          thread.id,
+          outcome.text,
+          outcome.toolCalls,
+        );
         send({type: 'done', message: toChatMessage(saved)});
       } catch (error) {
         // For example, the chat was deleted while the answer streamed.

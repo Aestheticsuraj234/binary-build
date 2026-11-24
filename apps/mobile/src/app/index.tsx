@@ -82,6 +82,13 @@ export default function DiscoverScreen() {
         <View style={styles.topActions}>
           <Pressable
             accessibilityRole="button"
+            onPress={() => router.push('/routines')}
+            style={styles.topButton}
+          >
+            <Text style={styles.topButtonText}>Routines</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             onPress={() => router.push('/apps')}
             style={styles.topButton}
           >

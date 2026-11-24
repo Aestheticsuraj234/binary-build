@@ -84,6 +84,27 @@ export class AppUnreachableError extends AppError {
   }
 }
 
+/** 401: a webhook without the right secret. */
+export class UnauthorizedError extends AppError {
+  constructor(message: string) {
+    super(API_ERROR_CODES.unauthorized, 401, message);
+  }
+}
+
+/** 413: a request body over the limit. */
+export class TooLargeError extends AppError {
+  constructor(message: string) {
+    super(API_ERROR_CODES.tooLarge, 413, message);
+  }
+}
+
+/** 502: the job runner (Trigger.dev) couldn't take the job. */
+export class JobsUnavailableError extends AppError {
+  constructor(message: string) {
+    super(API_ERROR_CODES.jobsUnavailable, 502, message);
+  }
+}
+
 /** Hono's `onError`: typed errors become clean JSON, the rest a 500. */
 export function handleError(error: Error, c: Context): Response {
   if (error instanceof AppError) {

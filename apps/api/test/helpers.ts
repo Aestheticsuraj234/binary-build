@@ -6,8 +6,10 @@ import {MockLanguageModelV4} from 'ai/test';
 import {createApp} from '../src/app';
 import {createAuth} from '../src/auth';
 import type {ModelBuilder} from '../src/engine/factory';
+import type {JobRunner} from '../src/jobs/job-runner';
 import type {ComposioGateway} from '../src/tools/composio';
 import type {BinaryTool} from '../src/tools/toolbox';
+import type {Vault} from '../src/vault';
 import {createVault} from '../src/vault';
 import {
   API_URL,
@@ -23,6 +25,8 @@ export function createTestApp(
     buildModel?: ModelBuilder;
     builtInTools?: () => BinaryTool[];
     composio?: ComposioGateway | null;
+    /** Builds the job runner from the test app's database and vault. */
+    jobRunner?: (deps: {db: Database; vault: Vault}) => JobRunner;
   } = {},
 ) {
   const db: Database = createDb(TEST_DATABASE_URL);
@@ -43,6 +47,8 @@ export function createTestApp(
     builtInTools: options.builtInTools,
     composio: options.composio,
     webUrl: WEB_URL,
+    apiUrl: API_URL,
+    jobRunner: options.jobRunner?.({db, vault}),
   });
   return {app, db, vault};
 }

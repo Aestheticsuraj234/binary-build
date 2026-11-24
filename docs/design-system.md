@@ -179,6 +179,23 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
   itself with Tailwind classes. `app/globals.css` points Tailwind at its files
   with `@source`; if that path is wrong, answers lose their styles silently.
 
+## Routines
+
+- **Routines** sits under Discover in the main links. The list shows each
+  routine as a card: the character's face, name, an On/Off tag, chips for
+  the schedule ("Weekdays at 9:00") and webhook, and the last run's status
+  and time.
+- Without Trigger.dev, the list starts with an amber notice (`warning` on
+  `warningSurface`) saying schedules won't fire.
+- A routine's page puts the form and the webhook card on the left and
+  **Runs** on the right, with the one lime **Run now**. Run statuses are
+  pills: Queued (clock), Running (spinner), Done (lime check), Failed (red,
+  with the reason under the run). Each run links to its **Transcript**.
+- Schedule times read "Times use Asia/Calcutta. Change". A new webhook
+  secret shows once in a lime-outlined box with a copy button.
+- On the phone, choices are pills, the switches are native, and the secret
+  has a Share button.
+
 ## Characters
 
 - The cast lives in `packages/shared/src/characters.ts`: name, personality,

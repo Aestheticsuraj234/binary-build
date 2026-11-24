@@ -10,7 +10,8 @@
     "check-types": "tsc --noEmit",
     "test": "vitest run",
     "auth:schema": "auth generate --config src/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "trigger:dev": "trigger dev --env-file ../../.env"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.105",
@@ -22,6 +23,7 @@
     "@binary/shared": "workspace:*",
     "@composio/core": "^0.29.0",
     "@hono/node-server": "^2.1.8",
+    "@trigger.dev/sdk": "4.8.8",
     "ai": "^7.0.173",
     "better-auth": "^1.7.25",
     "hono": "^4.13.19",
@@ -32,9 +34,11 @@
     "@binary/eslint-config": "workspace:*",
     "@binary/typescript-config": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@trigger.dev/build": "4.8.8",
     "@types/node": "^24.12.0",
     "auth": "^1.7.25",
     "eslint": "^10.9.1",
+    "trigger.dev": "4.8.8",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.1.0"

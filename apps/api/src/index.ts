@@ -5,6 +5,10 @@ import {createApp} from './app';
 import {createAuth} from './auth';
 import type {Env} from './env';
 import {getTrustedOrigins, loadEnv} from './env';
+import type {JobRunner} from './jobs/job-runner';
+import {InProcessRunner} from './jobs/job-runner';
+import {TriggerDevRunner} from './jobs/trigger-dev-runner';
+import {createRoutineExecutor} from './routines/run-routine';
 import {createComposioGateway} from './tools/composio';
 import {createVault} from './vault';
 
@@ -29,6 +33,31 @@ function main(): void {
   const composio = env.COMPOSIO_API_KEY
     ? createComposioGateway(env.COMPOSIO_API_KEY)
     : null;
+
+  // Routines run on Trigger.dev when it's set up, otherwise in this process.
+  let jobRunner: JobRunner;
+  if (env.TRIGGER_SECRET_KEY) {
+    jobRunner = new TriggerDevRunner(env.TRIGGER_SECRET_KEY);
+    console.log(
+      'Routines run on Trigger.dev. Keep `pnpm trigger:dev` running.',
+    );
+  } else {
+    const inProcess = new InProcessRunner(
+      db,
+      createRoutineExecutor({db, vault, composio}),
+    );
+    jobRunner = inProcess;
+    console.log(
+      "Routines run inside the API; schedules won't fire without Trigger.dev.",
+    );
+    // Runs cut off by the last restart start again.
+    void inProcess.recover().then(count => {
+      if (count > 0) {
+        console.log(`Picked up ${count} unfinished routine run(s).`);
+      }
+    });
+  }
+
   const app = createApp({
     auth,
     db,
@@ -36,6 +65,8 @@ function main(): void {
     trustedOrigins,
     composio,
     webUrl: env.WEB_URL,
+    apiUrl: env.BETTER_AUTH_URL,
+    jobRunner,
   });
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.

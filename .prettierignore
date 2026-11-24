@@ -11,3 +11,4 @@ packages/db/drizzle
 **/.claude
 **/.agents
 **/AGENTS.md
+.trigger

@@ -81,6 +81,8 @@ export const API_ERROR_CODES = {
   conflict: 'CONFLICT',
   unsafeUrl: 'UNSAFE_URL',
   appUnreachable: 'APP_UNREACHABLE',
+  tooLarge: 'TOO_LARGE',
+  jobsUnavailable: 'JOBS_UNAVAILABLE',
 } as const;
 
 export type ApiErrorCode =

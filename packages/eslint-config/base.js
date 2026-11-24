@@ -12,7 +12,7 @@ import tseslint from 'typescript-eslint';
  * @type {import('eslint').Linter.Config[]}
  */
 export const baseConfig = [
-  {ignores: ['**/dist/**', '**/coverage/**', '**/.turbo/**']},
+  {ignores: ['**/dist/**', '**/coverage/**', '**/.turbo/**', '**/.trigger/**']},
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
