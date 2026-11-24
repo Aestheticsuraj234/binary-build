@@ -36,6 +36,15 @@ export const agents = pgTable(
     provider: text('provider', {enum: ['openai', 'anthropic', 'google']}),
     model: text('model'),
     /**
+     * How freely it may use tools (see `APPROVAL_POLICY` in
+     * @binary/shared). Characters hired before approvals get the same.
+     */
+    approvalMode: text('approval_mode', {
+      enum: ['plan_only', 'ask_first', 'auto_reads', 'accept_edits'],
+    })
+      .notNull()
+      .default('auto_reads'),
+    /**
      * Set when the agent is fired. A fired agent leaves the crew, but its
      * chats can still be read, so the row stays.
      */

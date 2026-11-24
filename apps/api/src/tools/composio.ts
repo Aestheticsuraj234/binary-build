@@ -90,6 +90,7 @@ export function toBinaryTools(tools: ComposioTools): BinaryTool[] {
     name: definition.slug,
     description: definition.description,
     risk: composioRisk(definition.tags),
+    source: {kind: 'composio', slug: definition.slug},
     inputSchema: jsonSchema(
       definition.inputSchema as Parameters<typeof jsonSchema>[0],
     ),
@@ -136,9 +137,10 @@ const TOOLS_PER_TOOLKIT = 40;
  * The real gateway, on the Composio SDK. Each Binary user is a Composio
  * user (by id), so people's accounts never mix.
  *
- * Tools run inside a session that only enables tools Composio tags
- * `readOnlyHint`, so even if Binary's own policy were bypassed, Composio
- * would refuse anything that changes things.
+ * Tools run inside a session that enables the toolkit's tools, writes
+ * included: Binary's approval policy decides what runs, and a tool that
+ * changes things only runs after the person approves it (or when the
+ * character may accept edits).
  */
 export function createComposioGateway(apiKey: string): ComposioGateway {
   const composio = new Composio({
@@ -152,7 +154,6 @@ export function createComposioGateway(apiKey: string): ComposioGateway {
     return composio.create(userId, {
       sessionPreset: 'direct_tools',
       toolkits,
-      tags: ['readOnlyHint'],
       manageConnections: false,
     });
   }

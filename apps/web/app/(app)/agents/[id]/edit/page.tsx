@@ -65,6 +65,7 @@ async function EditAgent({
           avatar: characterOf(agent.avatar).id,
           provider,
           model,
+          approvalMode: agent.approvalMode,
         }}
       />
     </>

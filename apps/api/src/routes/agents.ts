@@ -20,6 +20,7 @@ export function toAgentSummary(row: AgentRow): AgentSummary {
     provider: row.provider,
     model: row.model,
     templateId: row.templateId,
+    approvalMode: row.approvalMode,
   };
 }
 

@@ -22,13 +22,18 @@ import {Markdown} from '@/components/chat/markdown';
 import {ToolCallCard} from '@/components/chat/tool-call-card';
 import {Button, buttonVariants} from '@/components/ui/button';
 import {Textarea} from '@/components/ui/textarea';
+import {announceApprovalsChanged} from '@/lib/approval-events';
+import {decideRequest} from '@/lib/approvals';
 import {announceChatsChanged} from '@/lib/chat-events';
 import {ApiError, callApi} from '@/lib/client-api';
 
-/** One message on screen. An `error` means the answer wasn't saved. */
+/**
+ * One message on screen. An `error` means the answer wasn't saved. A
+ * `note` is from Binary: "You approved shop refund order."
+ */
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'note';
   content: string;
   toolCalls: ToolCallRecord[];
   error?: string;
@@ -244,6 +249,10 @@ export function ChatView({
               isStreaming: false,
             }));
             announceChatsChanged();
+            if (event.message.toolCalls.some(c => c.status === 'waiting')) {
+              // A new request waits in Today.
+              announceApprovalsChanged();
+            }
           }
         }
       }
@@ -271,6 +280,68 @@ export function ChatView({
       setMood('happy');
       happyTimer.current = setTimeout(() => setMood('idle'), 2500);
     }
+  }
+
+  /**
+   * Approves or rejects a waiting tool call. When it's done, the card
+   * changes, Binary's note and the character's follow-up appear below.
+   * Resolves to an error to show on the card, or undefined.
+   */
+  async function decide(
+    call: ToolCallRecord,
+    decision: 'approve' | 'reject',
+  ): Promise<string | undefined> {
+    if (!call.approvalId) {
+      return 'This request is missing.';
+    }
+    clearTimeout(happyTimer.current);
+    setMood('thinking');
+    if (decision === 'approve') {
+      setActiveTool(call.name);
+    }
+    const result = await decideRequest(call.approvalId, decision);
+    setActiveTool(undefined);
+    if (!result.ok) {
+      setMood('idle');
+      if (result.alreadyDecided) {
+        // Decided elsewhere (another tab or device): show what happened.
+        router.refresh();
+      }
+      return result.message;
+    }
+    const {decided} = result;
+    setMessages(current => {
+      const known = new Set(current.map(m => m.id));
+      const added: Message[] = [decided.note];
+      if (decided.reply) {
+        added.push(decided.reply);
+      } else if (decided.replyError) {
+        added.push({
+          id: localId(),
+          role: 'assistant',
+          content: '',
+          toolCalls: [],
+          error: decided.replyError,
+        });
+      }
+      return [
+        ...current.map(m =>
+          m.id === decided.messageId
+            ? {
+                ...m,
+                toolCalls: m.toolCalls.map(c =>
+                  c.id === decided.call.id ? decided.call : c,
+                ),
+              }
+            : m,
+        ),
+        ...added.filter(m => !known.has(m.id)),
+      ];
+    });
+    followRef.current = true;
+    setMood('happy');
+    happyTimer.current = setTimeout(() => setMood('idle'), 2500);
+    return undefined;
   }
 
   async function deleteChat() {
@@ -441,7 +512,11 @@ export function ChatView({
                     message.role === 'user' && 'justify-end',
                   )}
                 >
-                  {message.role === 'user' ? (
+                  {message.role === 'note' ? (
+                    <p className="w-full text-center text-xs text-muted-foreground">
+                      {message.content}
+                    </p>
+                  ) : message.role === 'user' ? (
                     <p className="max-w-[85%] rounded-2xl rounded-br-md bg-secondary px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
                       {message.content}
                     </p>
@@ -457,7 +532,18 @@ export function ChatView({
                         {message.toolCalls.length > 0 && (
                           <div className="mb-3 flex flex-col gap-2">
                             {message.toolCalls.map(call => (
-                              <ToolCallCard key={call.id} call={call} />
+                              <ToolCallCard
+                                key={call.id}
+                                call={call}
+                                onDecide={
+                                  // Only a saved answer's requests exist.
+                                  !message.isStreaming &&
+                                  !message.error &&
+                                  !isFired
+                                    ? decision => decide(call, decision)
+                                    : undefined
+                                }
+                              />
                             ))}
                           </div>
                         )}

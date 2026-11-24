@@ -8,6 +8,7 @@ import type {
   RoutineDetail,
   RoutinesOverview,
   ThreadDetail,
+  TodayOverview,
   ThreadSummary,
   ToolsOverview,
 } from '@binary/shared';
@@ -115,3 +116,15 @@ export const fetchRoutine = cache(
   async (id: string): Promise<RoutineDetail | null> =>
     apiGet<RoutineDetail>(`/api/routines/${encodeURIComponent(id)}`),
 );
+
+/** Requests waiting for the person, and recent routine runs. */
+export const fetchToday = cache(async (): Promise<TodayOverview> => {
+  const body = await apiGet<TodayOverview>('/api/today');
+  return body ?? {waiting: [], recentRuns: []};
+});
+
+/** How many requests wait for the person, for the Today badge. */
+export const fetchPendingCount = cache(async (): Promise<number> => {
+  const body = await apiGet<{pending: number}>('/api/approvals/count');
+  return body?.pending ?? 0;
+});

@@ -1,5 +1,5 @@
 import type {AgentTemplateSummary} from '@binary/shared';
-import {characterOf, getProvider} from '@binary/shared';
+import {characterOf, DEFAULT_APPROVAL_MODE, getProvider} from '@binary/shared';
 import type {Metadata} from 'next';
 import {Suspense} from 'react';
 
@@ -70,6 +70,7 @@ async function NewAgent({
           avatar: character.id,
           provider,
           model: getProvider(provider).defaultModel,
+          approvalMode: DEFAULT_APPROVAL_MODE,
         }}
       />
     </>

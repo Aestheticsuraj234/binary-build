@@ -60,6 +60,7 @@ describe('hiring', () => {
     expect(response.status).toBe(201);
     const {agent} = (await response.json()) as {agent: AgentSummary};
     expect(Object.keys(agent).sort()).toEqual([
+      'approvalMode',
       'avatar',
       'id',
       'instructions',
@@ -69,7 +70,12 @@ describe('hiring', () => {
       'role',
       'templateId',
     ]);
-    expect(agent).toMatchObject({name: 'Ada', avatar: 'nova'});
+    expect(agent).toMatchObject({
+      name: 'Ada',
+      avatar: 'nova',
+      // New characters start on Auto-approve reads.
+      approvalMode: 'auto_reads',
+    });
   });
 
   it('copies a template, so editing the agent leaves the template alone', async () => {

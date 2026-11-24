@@ -7,8 +7,8 @@ import {z} from 'zod';
  * - `write` changes something outside Binary, like sending or deleting.
  * - `computer` controls a sandbox, a browser or a computer.
  *
- * Only `read` runs for now. The others are blocked until Binary can ask
- * the person first.
+ * Whether a tool runs, asks first or isn't offered depends on the
+ * character's approval mode (see `APPROVAL_POLICY`).
  */
 export const TOOL_RISKS = ['read', 'write', 'computer'] as const;
 export type ToolRisk = (typeof TOOL_RISKS)[number];
@@ -23,19 +23,14 @@ export const RISK_INFO: Record<ToolRisk, {label: string; description: string}> =
     write: {
       label: 'Write',
       description:
-        'Changes something outside Binary, like sending or deleting. Blocked until approvals arrive.',
+        'Changes something outside Binary, like sending or deleting. Asks first, unless the character may accept edits.',
     },
     computer: {
       label: 'Computer',
       description:
-        'Controls a sandbox, a browser or your computer. Comes in later chapters.',
+        'Controls a sandbox, a browser or your computer. Always asks first.',
     },
   };
-
-/** Whether a tool of this risk may run without asking. Only `read` can. */
-export function runsWithoutAsking(risk: ToolRisk): boolean {
-  return risk === 'read';
-}
 
 /** One tool, as the Apps & tools page lists it. */
 export interface ToolSummary {
@@ -69,8 +64,13 @@ export interface ToolsOverview {
   apps: AppWithTools[];
 }
 
-/** Where a tool call is up to. */
-export type ToolCallStatus = 'running' | 'done' | 'failed' | 'blocked';
+/**
+ * Where a tool call is up to. `waiting` needs the person's OK (its
+ * `approvalId` says which request); `rejected` means they said no and it
+ * never ran. `blocked` is from before approvals existed.
+ */
+export type ToolCallStatus =
+  'running' | 'done' | 'failed' | 'waiting' | 'rejected' | 'blocked';
 
 /** One tool call inside an answer, as it's shown and saved. */
 export interface ToolCallRecord {
@@ -83,6 +83,8 @@ export interface ToolCallRecord {
   output?: unknown;
   /** Why it `failed` or was `blocked`. */
   error?: string;
+  /** The approval request, while it's `waiting` and after it's decided. */
+  approvalId?: string;
 }
 
 export const APP_NAME_MAX_LENGTH = 40;

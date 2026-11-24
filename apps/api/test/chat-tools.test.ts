@@ -10,9 +10,9 @@ import type {MockLanguageModelV4} from 'ai/test';
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest';
 
 import type {ModelBuilder} from '../src/engine/factory';
-import {BLOCKED_FOR_PERSON} from '../src/chat/answer';
+import {WAITING_FOR_PERSON} from '../src/chat/answer';
 import {currentTimeTool, webPageTool} from '../src/tools/built-in';
-import {BLOCKED_REASON} from '../src/tools/toolbox';
+import {WAITING_MESSAGE} from '../src/tools/toolbox';
 import type {ScriptedStep} from './helpers';
 import {
   callApi,
@@ -206,11 +206,11 @@ describe('app tools', () => {
     expect(JSON.stringify(calls[0]!.output)).toContain('2 mugs, shipped');
   });
 
-  it('blocks a write tool: it never runs, and the model is told why', async () => {
+  it('asks before a write tool: it never runs, and the model is told it waits', async () => {
     await connectShop();
     steps = [
       {toolCalls: [{name: 'shop_refund_order', input: {orderId: 'A1'}}]},
-      {text: "I can't refund it yet: that needs your approval."},
+      {text: "I've asked for your approval to refund A1."},
     ];
 
     const {toolEvents} = await ask('Please refund order A1');
@@ -222,17 +222,18 @@ describe('app tools', () => {
         name: 'shop_refund_order',
         risk: 'write',
         input: {orderId: 'A1'},
-        status: 'blocked',
-        error: BLOCKED_FOR_PERSON,
+        status: 'waiting',
+        error: WAITING_FOR_PERSON,
+        approvalId: expect.any(String) as string,
       },
     ]);
-    expect(promptOfStep(1)).toContain(BLOCKED_REASON.slice(0, 40));
+    expect(promptOfStep(1)).toContain(WAITING_MESSAGE.slice(0, 40));
     expect((await savedAnswer()).toolCalls[0]).toMatchObject({
-      status: 'blocked',
+      status: 'waiting',
     });
   });
 
-  it('treats a tool name the model made up as write, and blocks it', async () => {
+  it("fails a tool name the model made up, and doesn't ask about it", async () => {
     steps = [
       {toolCalls: [{name: 'delete_everything', input: {}}]},
       {text: 'I made that up.'},
@@ -240,7 +241,8 @@ describe('app tools', () => {
 
     const {calls} = await ask('Do something odd');
 
-    expect(calls[0]).toMatchObject({risk: 'write', status: 'blocked'});
+    expect(calls[0]).toMatchObject({risk: 'write', status: 'failed'});
+    expect(calls[0]!.approvalId).toBeUndefined();
   });
 
   it("keeps chatting when an app can't be reached", async () => {

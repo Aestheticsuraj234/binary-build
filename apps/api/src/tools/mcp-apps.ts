@@ -54,6 +54,8 @@ export function appToolName(appName: string, toolName: string): string {
 
 /** Where to find an app and how to sign in to it. */
 export interface AppConnection {
+  /** The saved app's id, so approved requests find its tools again. */
+  appId?: string;
   name: string;
   url: string;
   /** The whole Authorization header value, if the app needs one. */
@@ -134,6 +136,11 @@ export async function openApp(connection: AppConnection): Promise<OpenApp> {
           definition.description?.trim() ||
           `${definition.name} from ${connection.name}.`,
         risk: riskFromAnnotations(annotations),
+        source: {
+          kind: 'app',
+          appId: connection.appId ?? '',
+          tool: definition.name,
+        },
         inputSchema: jsonSchema(
           definition.inputSchema as Parameters<typeof jsonSchema>[0],
         ),

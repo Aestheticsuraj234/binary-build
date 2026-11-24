@@ -1,20 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
-import {
-  APP_MESSAGES,
-  authMethodLabel,
-  connectAppSchema,
-  runsWithoutAsking,
-} from './tools';
+import {APP_MESSAGES, authMethodLabel, connectAppSchema} from './tools';
 import {validate} from './validate';
-
-describe('runsWithoutAsking', () => {
-  it('only lets read tools run', () => {
-    expect(runsWithoutAsking('read')).toBe(true);
-    expect(runsWithoutAsking('write')).toBe(false);
-    expect(runsWithoutAsking('computer')).toBe(false);
-  });
-});
 
 describe('connectAppSchema', () => {
   it('accepts a URL and an optional Authorization header', () => {

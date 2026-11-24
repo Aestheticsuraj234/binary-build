@@ -483,17 +483,17 @@ describe('Composio tools in a chat', () => {
     expect(calls[0]).toMatchObject({risk: 'read', status: 'done'});
   });
 
-  it('blocks a write tool, which never reaches Composio', async () => {
+  it('asks before a write tool, which never reaches Composio', async () => {
     fake.accountList = [active('gmail')];
     steps = [
       {toolCalls: [{name: 'GMAIL_SEND_EMAIL', input: {to: 'ada@example.com'}}]},
-      {text: "I can't send email yet."},
+      {text: "I've asked before sending it."},
     ];
 
     const {calls} = await ask('Email Ada');
 
     expect(fake.executed).toEqual([]);
-    expect(calls[0]).toMatchObject({risk: 'write', status: 'blocked'});
+    expect(calls[0]).toMatchObject({risk: 'write', status: 'waiting'});
   });
 
   it("doesn't ask Composio for tools when nothing is connected", async () => {

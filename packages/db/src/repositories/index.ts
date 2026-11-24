@@ -6,3 +6,4 @@ export * from './thread-repository';
 export * from './user-repository';
 export * from './routine-repository';
 export * from './routine-run-repository';
+export * from './approval-repository';

@@ -16,23 +16,23 @@ so change both together.
 
 ## Colour
 
-| Token            | Value     | Use it for                                                                    |
-| ---------------- | --------- | ----------------------------------------------------------------------------- |
-| `background`     | `#09090b` | The page or screen behind everything.                                         |
-| `surface`        | `#18181b` | Inputs, cards, secondary buttons.                                             |
-| `surfaceRaised`  | `#27272a` | Hover and pressed states on surfaces.                                         |
-| `border`         | `#27272a` | Quiet dividers.                                                               |
-| `borderStrong`   | `#3f3f46` | Input and secondary-button outlines.                                          |
-| `text`           | `#fafafa` | Headings, labels, body text.                                                  |
-| `textMuted`      | `#a1a1aa` | Supporting text under a heading, hints.                                       |
-| `textSubtle`     | `#71717a` | Placeholders and the least important text.                                    |
-| `accent`         | `#d1fe17` | **The one main action on a screen.** Nothing else.                            |
-| `accentPressed`  | `#b6e000` | The main action while pressed or hovered.                                     |
-| `onAccent`       | `#09090b` | Text and icons on top of `accent`.                                            |
-| `danger`         | `#f87171` | Error text and the border of an error message.                                |
-| `dangerSurface`  | `#2a1215` | The background of an error message.                                           |
-| `warning`        | `#fbbf24` | Caution, not failure: `write` and `computer` risk badges, blocked tool calls. |
-| `warningSurface` | `#2a2008` | The background behind a blocked tool call's note.                             |
+| Token            | Value     | Use it for                                                                      |
+| ---------------- | --------- | ------------------------------------------------------------------------------- |
+| `background`     | `#09090b` | The page or screen behind everything.                                           |
+| `surface`        | `#18181b` | Inputs, cards, secondary buttons.                                               |
+| `surfaceRaised`  | `#27272a` | Hover and pressed states on surfaces.                                           |
+| `border`         | `#27272a` | Quiet dividers.                                                                 |
+| `borderStrong`   | `#3f3f46` | Input and secondary-button outlines.                                            |
+| `text`           | `#fafafa` | Headings, labels, body text.                                                    |
+| `textMuted`      | `#a1a1aa` | Supporting text under a heading, hints.                                         |
+| `textSubtle`     | `#71717a` | Placeholders and the least important text.                                      |
+| `accent`         | `#d1fe17` | **The one main action on a screen.** Nothing else.                              |
+| `accentPressed`  | `#b6e000` | The main action while pressed or hovered.                                       |
+| `onAccent`       | `#09090b` | Text and icons on top of `accent`.                                              |
+| `danger`         | `#f87171` | Error text and the border of an error message.                                  |
+| `dangerSurface`  | `#2a1215` | The background of an error message.                                             |
+| `warning`        | `#fbbf24` | Caution, not failure: risk badges, requests that need your OK, the Today count. |
+| `warningSurface` | `#2a2008` | The background behind a blocked tool call's note.                               |
 
 ### Rules for the accent
 
@@ -141,10 +141,15 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
   `dangerSurface` box below and a note that it wasn't saved.
 - A fired agent's chat shows a neutral note, and no composer.
 - **Tool calls** sit above the answer text as small cards: a wrench, "Using",
-  "Used", "Tried" or "Blocked" and the tool's name, its risk badge, and a
-  status mark (spinner, lime check, red cross, amber shield). They open to
-  show the input and result as JSON. Blocked and failed calls start open,
-  with the reason on `warningSurface` (blocked) or `dangerSurface` (failed).
+  "Used", "Tried", "Wants to use" or "Rejected" and the tool's name, its
+  risk badge, and a status mark (spinner, lime check, red cross, amber
+  shield with a question mark, grey ban). They open to show the input and
+  result as JSON. Failed calls start open, with the reason on
+  `dangerSurface`.
+- A call that **needs your OK** has an amber outline and a row under it:
+  "Needs your OK", **Approve** (secondary) and **Reject** (ghost). After a
+  decision, a centred muted **note** ("You approved …") sits between the
+  answers, then the character's follow-up.
   While a tool runs, the character thinks and the stage says "… is using
   …".
 
@@ -178,6 +183,16 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 - On the web, answers use [Streamdown](https://streamdown.ai), which styles
   itself with Tailwind classes. `app/globals.css` points Tailwind at its files
   with `@source`; if that path is wrong, answers lose their styles silently.
+
+## Today
+
+- **Today** is first in the main links, with an amber count of requests
+  waiting. The page has **Waiting for you** (each request: face, "Mimi
+  wants to shop refund order", risk badge, time, the routine if one asked,
+  a Chat link, the exact input as JSON, and Approve / Reject) and
+  **Routine runs** from the last 24 hours.
+- Hiring and editing have **Permissions**: four cards (web) or pills
+  (phone), one per approval mode, each with a one-line description.
 
 ## Routines
 

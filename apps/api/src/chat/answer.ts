@@ -1,6 +1,8 @@
-import type {AgentRow, Database} from '@binary/db';
+import {randomUUID} from 'node:crypto';
+
+import type {AgentRow, Database, PendingApproval} from '@binary/db';
 import type {ChatTurn, ToolCallRecord} from '@binary/shared';
-import {getProvider, runsWithoutAsking} from '@binary/shared';
+import {decideTool, getProvider} from '@binary/shared';
 
 import type {RunContext} from '../agents/system-prompt';
 import {buildSystemPrompt} from '../agents/system-prompt';
@@ -8,16 +10,23 @@ import type {Engine} from '../engine/engine';
 import {engineErrorMessage} from '../routes/stream-answer';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
+import {sourceOf, Toolbox} from '../tools/toolbox';
+import type {UserToolbox} from '../tools/user-tools';
 import {loadUserToolbox} from '../tools/user-tools';
 import type {Vault} from '../vault';
 
 /** How many model calls one answer may take (each tool round trip is one). */
 export const MAX_STEPS = 6;
 
-/** What the person sees on a blocked tool call. */
-export const BLOCKED_FOR_PERSON =
-  'This tool can change things outside Binary, so it needs your approval. ' +
-  'Approvals arrive in a later chapter.';
+/** The toolbox for Plan only: nothing to offer, nothing to close. */
+const NO_TOOLS: UserToolbox = {
+  toolbox: new Toolbox([]),
+  unavailable: [],
+  close: async () => {},
+};
+
+/** What the person sees on a tool call that waits for their OK. */
+export const WAITING_FOR_PERSON = 'Needs your OK before it runs.';
 
 /** What answering needs from the app: the database, keys and tools. */
 export interface AnswerDeps {
@@ -43,33 +52,42 @@ export interface AnswerRequest {
 export type AnswerProgress =
   {type: 'delta'; text: string} | {type: 'tool'; call: ToolCallRecord};
 
-/** A finished answer (not saved yet), or why there isn't one. */
+/**
+ * A finished answer (not saved yet), or why there isn't one. `approvals`
+ * are the requests it made; save them with the answer.
+ */
 export type AnswerOutcome =
-  | {ok: true; text: string; toolCalls: ToolCallRecord[]}
+  | {
+      ok: true;
+      text: string;
+      toolCalls: ToolCallRecord[];
+      approvals: PendingApproval[];
+    }
   | {ok: false; error: string};
 
 /**
  * The chat pipeline: loads the person's tools, asks the model with the
- * agent's system prompt, runs only the tools the policy allows, and
- * reports each step through `onProgress`. Chats and routine runs both use
- * this, so they get the same tools and the same rules. The caller saves
- * the result.
+ * agent's system prompt, runs the tools its approval mode allows, turns
+ * the ones that need an OK into approval requests (nothing waits in
+ * memory), and reports each step through `onProgress`. Chats, routine
+ * runs and follow-ups after a decision all use this, so they get the same
+ * tools and the same rules. The caller saves the result.
  */
 export async function generateAnswer(
   {db, vault, builtInTools, composio}: AnswerDeps,
   {engine, agent, userId, prompt, history, run}: AnswerRequest,
   onProgress: (progress: AnswerProgress) => void = () => {},
 ): Promise<AnswerOutcome> {
+  const mode = agent.approvalMode;
   // Built-in tools plus every app that answers. An app that's down is
-  // left out, and the answer carries on without it.
-  const tools = await loadUserToolbox(
-    db,
-    vault,
-    userId,
-    builtInTools(),
-    composio,
-  );
+  // left out, and the answer carries on without it. Plan only uses no
+  // tools, so it doesn't open any apps.
+  const tools =
+    mode === 'plan_only'
+      ? NO_TOOLS
+      : await loadUserToolbox(db, vault, userId, builtInTools(), composio);
   const calls = new Map<string, ToolCallRecord>();
+  const approvals: PendingApproval[] = [];
   const report = (call: ToolCallRecord) => {
     calls.set(call.id, call);
     onProgress({type: 'tool', call});
@@ -87,27 +105,51 @@ export async function generateAnswer(
         unavailableApps: tools.unavailable,
         run,
       }),
-      tools: tools.toolbox.toToolSet(),
+      tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,
     })) {
       if (part.type === 'text') {
         text += part.text;
         onProgress({type: 'delta', text: part.text});
       } else if (part.type === 'tool-call') {
+        const found = tools.toolbox.find(part.name);
         const risk = tools.toolbox.riskOf(part.name);
-        const allowed = runsWithoutAsking(risk);
-        report({
-          id: part.id,
-          name: part.name,
-          risk,
-          input: part.input,
-          status: allowed ? 'running' : 'blocked',
-          ...(allowed ? {} : {error: BLOCKED_FOR_PERSON}),
-        });
+        if (found && decideTool(mode, risk) === 'ask') {
+          // Saved as a request with the answer. Nothing runs until the
+          // person approves, and then exactly this tool and input run.
+          const approvalId = randomUUID();
+          approvals.push({
+            id: approvalId,
+            userId,
+            agentId: agent.id,
+            toolCallId: part.id,
+            toolName: part.name,
+            toolSource: sourceOf(found),
+            risk,
+            input: part.input ?? {},
+          });
+          report({
+            id: part.id,
+            name: part.name,
+            risk,
+            input: part.input,
+            status: 'waiting',
+            error: WAITING_FOR_PERSON,
+            approvalId,
+          });
+        } else {
+          report({
+            id: part.id,
+            name: part.name,
+            risk,
+            input: part.input,
+            status: 'running',
+          });
+        }
       } else {
         const call = calls.get(part.id);
-        // A blocked call stays blocked: nothing ran, whatever comes back.
-        if (!call || call.status === 'blocked') {
+        // A waiting call stays waiting: nothing ran, whatever comes back.
+        if (!call || call.status === 'waiting') {
           continue;
         }
         report(
@@ -127,5 +169,5 @@ export async function generateAnswer(
     const name = getProvider(engine.provider).name;
     return {ok: false, error: `${name} sent back an empty answer.`};
   }
-  return {ok: true, text, toolCalls: [...calls.values()]};
+  return {ok: true, text, toolCalls: [...calls.values()], approvals};
 }

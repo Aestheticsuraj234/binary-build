@@ -1,5 +1,6 @@
 import {z} from 'zod';
 
+import {approvalModeSchema, DEFAULT_APPROVAL_MODE} from './approvals';
 import {characterSchema} from './characters';
 import {isModelOf, PROVIDER_IDS} from './providers';
 
@@ -38,6 +39,8 @@ export const agentInputSchema = z
     avatar: characterSchema,
     provider: z.enum(PROVIDER_IDS, {error: AGENT_MESSAGES.providerRequired}),
     model: z.string().trim(),
+    /** How freely it may use tools. Older apps don't send it. */
+    approvalMode: approvalModeSchema.default(DEFAULT_APPROVAL_MODE),
     /** The template this agent was copied from, if any. */
     templateId: z.uuid().nullable().optional(),
   })

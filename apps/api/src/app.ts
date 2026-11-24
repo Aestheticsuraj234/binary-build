@@ -14,6 +14,7 @@ import {keysRoutes} from './routes/keys';
 import {playgroundRoutes} from './routes/playground';
 import {appsRoutes} from './routes/apps';
 import {integrationsRoutes} from './routes/integrations';
+import {approvalsRoutes, todayRoutes} from './routes/approvals';
 import {hooksRoutes} from './routes/hooks';
 import {routinesRoutes} from './routes/routines';
 import {settingsRoutes} from './routes/settings';
@@ -107,6 +108,11 @@ export function createApp({
   signedIn.route('/integrations', integrationsRoutes({db, composio, webUrl}));
   signedIn.route('/routines', routinesRoutes({db, service: routines, apiUrl}));
   signedIn.route('/settings', settingsRoutes({db, service: routines}));
+  signedIn.route(
+    '/approvals',
+    approvalsRoutes({db, vault, builtInTools, composio, engineFor}),
+  );
+  signedIn.route('/today', todayRoutes(db));
   app.route('/api', signedIn);
 
   return app;

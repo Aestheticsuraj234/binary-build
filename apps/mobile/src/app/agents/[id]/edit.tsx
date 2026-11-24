@@ -64,6 +64,7 @@ export default function EditAgentScreen() {
           avatar: characterOf(current.avatar).id,
           provider,
           model,
+          approvalMode: current.approvalMode,
         }}
       />
     </>

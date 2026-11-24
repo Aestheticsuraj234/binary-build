@@ -7,6 +7,8 @@ import type {
 } from '@binary/shared';
 import {
   agentInputSchema,
+  APPROVAL_MODE_INFO,
+  APPROVAL_MODES,
   CAST,
   characterOf,
   colors,
@@ -284,6 +286,18 @@ export function AgentForm({
           error={errors.model}
         />
 
+        <ChoiceRow
+          label="Permissions"
+          options={APPROVAL_MODES}
+          value={values.approvalMode}
+          onChange={mode => set('approvalMode', mode)}
+          describe={mode => APPROVAL_MODE_INFO[mode].label}
+          error={errors.approvalMode}
+        />
+        <Text style={styles.modeHint}>
+          {APPROVAL_MODE_INFO[values.approvalMode].description}
+        </Text>
+
         {formError && <Text style={styles.formError}>{formError}</Text>}
 
         <Button
@@ -355,6 +369,12 @@ const styles = StyleSheet.create({
   castName: {color: colors.textMuted, fontSize: fontSize.xs},
   multiline: {height: 110, paddingTop: spacing.md, textAlignVertical: 'top'},
   choices: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+  modeHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    marginTop: -spacing.sm,
+  },
   choice: {
     borderWidth: 1,
     borderColor: colors.borderStrong,

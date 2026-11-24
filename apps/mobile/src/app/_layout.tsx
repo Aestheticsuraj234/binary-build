@@ -66,6 +66,10 @@ export default function RootLayout() {
             options={{...INNER_SCREEN, title: 'Recent chats'}}
           />
           <Stack.Screen
+            name="today"
+            options={{...INNER_SCREEN, title: 'Today'}}
+          />
+          <Stack.Screen
             name="routines/index"
             options={{...INNER_SCREEN, title: 'Routines'}}
           />

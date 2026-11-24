@@ -20,6 +20,7 @@ import type {Context} from 'hono';
 import {Hono} from 'hono';
 
 import {generateAnswer} from '../chat/answer';
+import {modelTurns} from '../chat/history';
 import type {Engine} from '../engine/engine';
 import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
@@ -176,9 +177,7 @@ export function threadsRoutes({
     const context = contextWindow(
       await threads.recentMessages(thread.id, CHAT_CONTEXT_MESSAGES),
     );
-    const history = context
-      .slice(0, -1)
-      .map(({role, content}) => ({role, content}));
+    const history = modelTurns(context.slice(0, -1));
 
     return ndjsonResponse<ChatEvent>(async send => {
       send({
@@ -198,10 +197,12 @@ export function threadsRoutes({
         return;
       }
       try {
+        // Saved with any approval requests it made, all or nothing.
         const saved = await threads.addAnswer(
           thread.id,
           outcome.text,
           outcome.toolCalls,
+          outcome.approvals,
         );
         send({type: 'done', message: toChatMessage(saved)});
       } catch (error) {
