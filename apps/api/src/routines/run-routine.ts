@@ -11,6 +11,7 @@ import {generateAnswer} from '../chat/answer';
 import type {Engine} from '../engine/engine';
 import type {EngineFactory, ModelBuilder} from '../engine/factory';
 import {createEngineFactory, MissingKeyError} from '../engine/factory';
+import {BrowserManager} from '../browser/manager';
 import {SandboxManager} from '../sandbox/manager';
 import {builtInTools as defaultBuiltInTools} from '../tools/built-in';
 import type {ComposioGateway} from '../tools/composio';
@@ -167,6 +168,8 @@ export interface ExecutorOptions {
   composio?: ComposioGateway | null;
   /** Cloud sandboxes; off unless given. */
   sandboxes?: SandboxManager;
+  /** Browsers; off unless given. */
+  browsers?: BrowserManager;
 }
 
 /** Builds `runRoutine` with its dependencies filled in. */
@@ -177,6 +180,7 @@ export function createRoutineExecutor({
   builtInTools = defaultBuiltInTools,
   composio = null,
   sandboxes = new SandboxManager(db, null),
+  browsers = new BrowserManager({available: false}),
 }: ExecutorOptions): RoutineExecutor {
   const deps: RunDeps = {
     db,
@@ -184,6 +188,7 @@ export function createRoutineExecutor({
     builtInTools,
     composio,
     sandboxes,
+    browsers,
     engineFor: createEngineFactory({db, vault, buildModel}),
   };
   return (runId, options) => runRoutine(deps, runId, options);

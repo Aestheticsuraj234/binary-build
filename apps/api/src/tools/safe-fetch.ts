@@ -31,6 +31,47 @@ export function isPublicAddress(address: string): boolean {
 
 type LookupFunction = typeof dnsLookup;
 
+/**
+ * Resolves a host to one address it's safe to connect to, or throws
+ * `UnsafeUrlError`. Literal IPs are checked as they are; a name is looked
+ * up and refused if any of its addresses isn't allowed. Connect to the
+ * address this returns (not the name), so what was checked is what's used.
+ */
+export function createHostResolver({
+  isAllowedAddress = isPublicAddress,
+  lookup = dnsLookup,
+}: {
+  isAllowedAddress?: (address: string) => boolean;
+  lookup?: LookupFunction;
+} = {}) {
+  return (rawHost: string): Promise<{address: string; family: number}> => {
+    const host = rawHost.replace(/^\[|\]$/g, '');
+    const literal = isIP(host);
+    if (literal) {
+      return isAllowedAddress(host)
+        ? Promise.resolve({address: host, family: literal})
+        : Promise.reject(new UnsafeUrlError());
+    }
+    return new Promise((resolve, reject) => {
+      lookup(host, {all: true}, (error, addresses) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        const list = addresses as unknown as LookupAddress[];
+        if (
+          list.length === 0 ||
+          !list.every(a => isAllowedAddress(a.address))
+        ) {
+          reject(new UnsafeUrlError());
+          return;
+        }
+        resolve({address: list[0]!.address, family: list[0]!.family});
+      });
+    });
+  };
+}
+
 export interface PageFetcherOptions {
   /** Which addresses may be reached. Tests loosen this. */
   isAllowedAddress?: (address: string) => boolean;

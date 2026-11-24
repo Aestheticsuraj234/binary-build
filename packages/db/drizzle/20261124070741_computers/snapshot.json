@@ -1,0 +1,125 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "ae813a45-8276-432f-963c-f987dd22acc1",
+  "prevIds": [
+    "c7ff915a-6947-45eb-a32b-de127a837528"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_templates",
+        "computers"
+      ],
+      "writes": [
+        "s|col|public.agent_templates.computers",
+        "n|col|public.agent_templates.computers",
+        "e|col|public.agent_templates.computers"
+      ],
+      "reads": [
+        "n|tbl|public.agent_templates",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agents",
+        "computers"
+      ],
+      "writes": [
+        "s|col|public.agents.computers",
+        "n|col|public.agents.computers",
+        "e|col|public.agents.computers"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_templates",
+        "computer"
+      ],
+      "writes": [
+        "s|col|public.agent_templates.computer",
+        "n|col|public.agent_templates.computer",
+        "e|col|public.agent_templates.computer"
+      ],
+      "reads": [
+        "n|tbl|public.agent_templates",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agents",
+        "computer"
+      ],
+      "writes": [
+        "s|col|public.agents.computer",
+        "n|col|public.agents.computer",
+        "e|col|public.agents.computer"
+      ],
+      "reads": [
+        "n|tbl|public.agents",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_templates",
+        "name": "computers",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": "'{}'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agents",
+        "name": "computers",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": "'{}'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_templates\",\"computer\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agents\",\"computer\"]"
+    }
+  ]
+}

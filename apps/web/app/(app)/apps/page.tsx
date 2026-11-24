@@ -6,16 +6,16 @@ import {Suspense} from 'react';
 
 import {Page} from '@/components/page';
 import {AppsPanel} from '@/components/tools/apps-panel';
-import {SandboxesPanel} from '@/components/tools/sandboxes-panel';
+import {ComputersPanel} from '@/components/tools/computers-panel';
 import {RiskBadge, ToolList} from '@/components/tools/risk-badge';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchSandboxes, fetchToolsOverview} from '@/lib/api';
+import {fetchComputers, fetchToolsOverview} from '@/lib/api';
 
 export const metadata: Metadata = {title: 'Apps & tools · Binary'};
 
-/** Running cloud sandboxes, or how to turn them on. */
-async function Sandboxes() {
-  return <SandboxesPanel initial={await fetchSandboxes()} />;
+/** Running sandboxes and browsers, and how to turn each on. */
+async function Computers() {
+  return <ComputersPanel initial={await fetchComputers()} />;
 }
 
 /** Built-in tools and connected apps. Apps are asked for their tools, so this streams in. */
@@ -71,12 +71,12 @@ export default function AppsPage() {
       >
         <Tools />
       </Suspense>
-      <section aria-labelledby="sandboxes-heading" className="mt-12">
-        <h2 id="sandboxes-heading" className="mb-4 text-2xl font-semibold">
-          Cloud sandboxes
+      <section aria-labelledby="computers-heading" className="mt-12">
+        <h2 id="computers-heading" className="mb-4 text-2xl font-semibold">
+          Computers
         </h2>
         <Suspense fallback={<Skeleton className="h-24 rounded-lg" />}>
-          <Sandboxes />
+          <Computers />
         </Suspense>
       </section>
       <section aria-labelledby="composio-heading" className="mt-12">

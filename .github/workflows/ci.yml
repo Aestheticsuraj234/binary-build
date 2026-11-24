@@ -50,6 +50,10 @@ jobs:
       - name: Typecheck
         run: pnpm check-types
 
+      # The browser tests drive a real headless Chromium.
+      - name: Install Chromium
+        run: pnpm --filter api exec playwright install --with-deps chromium
+
       - name: Migrate the test database
         run: pnpm db:migrate
 

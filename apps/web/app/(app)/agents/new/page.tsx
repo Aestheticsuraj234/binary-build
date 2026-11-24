@@ -7,7 +7,7 @@ import {AgentForm} from '@/components/agents/agent-form';
 import {NeedsKey} from '@/components/agents/needs-key';
 import {PageHeading} from '@/components/agents/page-heading';
 import {Skeleton} from '@/components/ui/skeleton';
-import {fetchKeyStatuses, fetchSandboxes, fetchTemplates} from '@/lib/api';
+import {fetchKeyStatuses, fetchComputers, fetchTemplates} from '@/lib/api';
 import {connectedProviders} from '@/lib/providers';
 
 export const metadata: Metadata = {title: 'Hire a character · Binary'};
@@ -33,10 +33,10 @@ async function NewAgent({
   searchParams: PageProps<'/agents/new'>['searchParams'];
 }) {
   const {template: slug} = await searchParams;
-  const [templates, keys, sandboxes] = await Promise.all([
+  const [templates, keys, computers] = await Promise.all([
     fetchTemplates(),
     fetchKeyStatuses(),
-    fetchSandboxes(),
+    fetchComputers(),
   ]);
   const template = templates.find(t => t.slug === slug);
   const character = characterOf(template?.character ?? 'ember');
@@ -63,7 +63,10 @@ async function NewAgent({
       <AgentForm
         mode="hire"
         connectedProviders={providers}
-        sandboxesAvailable={sandboxes.available}
+        available={{
+          cloud_sandbox: computers.sandbox.available,
+          browser: computers.browser.available,
+        }}
         templateId={template?.id ?? null}
         initial={{
           name: character.name,
@@ -73,11 +76,13 @@ async function NewAgent({
           provider,
           model: getProvider(provider).defaultModel,
           approvalMode: DEFAULT_APPROVAL_MODE,
-          // The Coding Agent comes with a cloud sandbox, when there is one.
-          computer:
-            template?.computer === 'cloud_sandbox' && sandboxes.available
-              ? 'cloud_sandbox'
-              : 'none',
+          // Templates come with computers (a sandbox for the Coding Agent,
+          // a browser for the Research Assistant), when this Binary has them.
+          computers: (template?.computers ?? []).filter(kind =>
+            kind === 'cloud_sandbox'
+              ? computers.sandbox.available
+              : computers.browser.available,
+          ),
         }}
       />
     </>

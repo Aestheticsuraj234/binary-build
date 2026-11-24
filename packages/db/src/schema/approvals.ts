@@ -24,7 +24,9 @@ export type ToolSource =
   /** A Composio tool, by its slug (e.g. GMAIL_SEND_EMAIL). */
   | {kind: 'composio'; slug: string}
   /** A cloud sandbox tool, run in the request's chat's sandbox. */
-  | {kind: 'sandbox'; tool: string};
+  | {kind: 'sandbox'; tool: string}
+  /** A browser tool, run in the request's chat's browser. */
+  | {kind: 'browser'; tool: string};
 
 /**
  * A tool call waiting for the person's OK. It's a row, not a waiting

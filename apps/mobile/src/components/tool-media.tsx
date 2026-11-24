@@ -15,6 +15,31 @@ interface CodeInput {
   command?: string;
   path?: string;
   content?: string;
+  url?: string;
+  ref?: number;
+  element?: string;
+  text?: string;
+  submit?: boolean;
+  key?: string;
+}
+
+/** A browser step in words: "Click [3] More information…". */
+function browserStep(name: string, value: CodeInput): string | null {
+  switch (name) {
+    case 'browser_open':
+      return value.url ? `Open ${value.url}` : null;
+    case 'browser_click':
+      return `Click [${value.ref}] ${value.element ?? ''}`.trim();
+    case 'browser_type':
+      return (
+        `Type "${value.text ?? ''}" into [${value.ref}] ${value.element ?? ''}`.trim() +
+        (value.submit ? ', then press Enter' : '')
+      );
+    case 'browser_press':
+      return value.key ? `Press ${value.key}` : null;
+    default:
+      return null;
+  }
 }
 
 function Code({label, text}: {label: string; text: string}) {
@@ -48,7 +73,8 @@ export function CodeView({name, input}: {name: string; input: unknown}) {
   if (name === 'write_file' && typeof value.path === 'string') {
     return <Code label={`Write ${value.path}`} text={value.content ?? ''} />;
   }
-  return null;
+  const step = browserStep(name, value);
+  return step ? <Code label="In the browser" text={step} /> : null;
 }
 
 /** Charts a tool made, loaded with the session cookie. Never sent to the model. */
@@ -71,7 +97,7 @@ export function ToolImages({images}: {images: ToolImage[] | undefined}) {
       {images.map(image => (
         <Image
           key={image.id}
-          accessibilityLabel="Chart"
+          accessibilityLabel="Image from the tool"
           source={{
             uri: `${API_URL}${toolImagePath(image.id)}`,
             headers: {cookie},

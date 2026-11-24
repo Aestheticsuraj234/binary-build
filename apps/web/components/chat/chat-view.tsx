@@ -5,8 +5,8 @@ import type {
   ChatEvent,
   ChatMessage,
   Mood,
-  SandboxesOverview,
-  SandboxSummary,
+  ComputerSummary,
+  ComputersOverview,
   ThreadSummary,
   ToolCallRecord,
 } from '@binary/shared';
@@ -87,8 +87,8 @@ interface ChatViewProps {
   initialMessages: ChatMessage[];
   /** A fired agent's chat can be read but not continued. */
   isFired: boolean;
-  /** The chat's running cloud sandbox, if any. */
-  initialSandbox?: SandboxSummary | null;
+  /** The chat's running computers (sandbox, browser). */
+  initialComputers?: ComputerSummary[];
 }
 
 /**
@@ -102,7 +102,7 @@ export function ChatView({
   thread,
   initialMessages,
   isFired,
-  initialSandbox = null,
+  initialComputers = [],
 }: ChatViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -114,8 +114,8 @@ export function ChatView({
   // The tool being used right now, for the stage line.
   const [activeTool, setActiveTool] = useState<string>();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sandbox, setSandbox] = useState(initialSandbox);
-  const [isStopping, setIsStopping] = useState(false);
+  const [running, setRunning] = useState(initialComputers);
+  const [stopping, setStopping] = useState<string>();
   const nextLocalId = useRef(1);
   const controllerRef = useRef<AbortController>(null);
   const happyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -164,30 +164,25 @@ export function ChatView({
     }
   }, [thread, threadId, pathname, router]);
 
-  /** Checks whether this chat's sandbox runs, after something may have started it. */
-  function refreshSandbox(id: string | null = threadId) {
-    if (agent.computer !== 'cloud_sandbox' || !id) {
+  /** Checks this chat's computers, after something may have started one. */
+  function refreshComputers(id: string | null = threadId) {
+    if (agent.computers.length === 0 || !id) {
       return;
     }
-    callApi<SandboxesOverview>('/api/sandboxes')
-      .then(body =>
-        setSandbox(body.sandboxes.find(s => s.threadId === id) ?? null),
-      )
+    callApi<ComputersOverview>('/api/computers')
+      .then(body => setRunning(body.computers.filter(c => c.threadId === id)))
       .catch(() => {});
   }
 
-  async function stopSandbox() {
-    if (!sandbox) {
-      return;
-    }
-    setIsStopping(true);
+  async function stopComputer(computer: ComputerSummary) {
+    setStopping(computer.id);
     try {
-      await callApi(`/api/sandboxes/${sandbox.id}/stop`, {method: 'POST'});
-      setSandbox(null);
+      await callApi(`/api/computers/${computer.id}/stop`, {method: 'POST'});
+      setRunning(current => current.filter(c => c.id !== computer.id));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsStopping(false);
+      setStopping(undefined);
     }
   }
 
@@ -293,7 +288,7 @@ export function ChatView({
               // A new request waits in Today.
               announceApprovalsChanged();
             }
-            refreshSandbox(id);
+            refreshComputers(id);
           }
         }
       }
@@ -382,7 +377,7 @@ export function ChatView({
     followRef.current = true;
     setMood('happy');
     happyTimer.current = setTimeout(() => setMood('idle'), 2500);
-    refreshSandbox();
+    refreshComputers();
     return undefined;
   }
 
@@ -447,29 +442,44 @@ export function ChatView({
               </Link>
             </>
           )}
-          {sandbox && (
-            <span className="ml-auto inline-flex h-8 items-center gap-2 rounded-full border bg-background/80 pr-1 pl-3 text-xs">
-              <span aria-hidden className="size-2 rounded-full bg-primary" />
-              Sandbox on
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Stop the sandbox"
-                title="Stop the sandbox (its files go with it)"
-                disabled={isStopping}
-                onClick={() => void stopSandbox()}
+          {running.map((computer, index) => {
+            const isBrowser = computer.kind === 'browser';
+            return (
+              <span
+                key={computer.id}
+                className={cn(
+                  'inline-flex h-8 items-center gap-2 rounded-full border bg-background/80 pr-1 pl-3 text-xs',
+                  index === 0 && 'ml-auto',
+                )}
               >
-                <SquareIcon aria-hidden />
-              </Button>
-            </span>
-          )}
+                <span aria-hidden className="size-2 rounded-full bg-primary" />
+                {isBrowser ? 'Browser open' : 'Sandbox on'}
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={
+                    isBrowser ? 'Close the browser' : 'Stop the sandbox'
+                  }
+                  title={
+                    isBrowser
+                      ? 'Close the browser'
+                      : 'Stop the sandbox (its files go with it)'
+                  }
+                  disabled={stopping === computer.id}
+                  onClick={() => void stopComputer(computer)}
+                >
+                  <SquareIcon aria-hidden />
+                </Button>
+              </span>
+            );
+          })}
           {threadId && (
             <Button
               variant="secondary"
               size="sm"
               disabled={isDeleting || isBusy}
               onClick={() => void deleteChat()}
-              className={sandbox ? undefined : 'ml-auto'}
+              className={running.length > 0 ? undefined : 'ml-auto'}
             >
               <Trash2Icon aria-hidden />
               Delete chat

@@ -1,42 +1,55 @@
 import {z} from 'zod';
 
 /**
- * The computer a character can work on. `cloud_sandbox` is a private
- * Linux machine from E2B, one per chat. Later chapters add more.
+ * The computers a character can work on. It can have none, one or both:
+ *
+ * - `cloud_sandbox`: a private Linux machine from E2B, one per chat.
+ * - `browser`: a headless Chromium on this machine, one per chat.
  */
-export const COMPUTERS = ['none', 'cloud_sandbox'] as const;
-export type Computer = (typeof COMPUTERS)[number];
+export const COMPUTER_KINDS = ['cloud_sandbox', 'browser'] as const;
+export type ComputerKind = (typeof COMPUTER_KINDS)[number];
 
-export const computerSchema = z.enum(COMPUTERS, {
-  error: 'Choose a computer for this character.',
-});
+/** A character's computers: each kind at most once, in a fixed order. */
+export const computersSchema = z
+  .array(z.enum(COMPUTER_KINDS, {error: 'Choose a computer from the list.'}))
+  .transform(kinds => COMPUTER_KINDS.filter(kind => kinds.includes(kind)));
 
 /** How each computer is described when hiring or editing a character. */
 export const COMPUTER_INFO: Record<
-  Computer,
+  ComputerKind,
   {label: string; description: string}
 > = {
-  none: {
-    label: 'None',
-    description: 'No computer. It chats and uses your apps.',
-  },
   cloud_sandbox: {
     label: 'Cloud sandbox',
     description:
       'A private Linux machine for each chat: runs Python, JavaScript and shell commands, works with files and draws charts. Every run asks you first.',
   },
+  browser: {
+    label: 'Browser',
+    description:
+      'A browser for each chat: opens and reads public web pages on its own, and asks before clicking or typing. You see a screenshot of every step.',
+  },
 };
 
 /** How long a sandbox may sit idle before it stops (and its files go). */
 export const SANDBOX_IDLE_MINUTES = 5;
+/** How long a browser may sit idle before it closes. */
+export const BROWSER_IDLE_MINUTES = 10;
+/** How many browsers may be open at once on this Binary. */
+export const BROWSER_MAX_OPEN = 5;
 
 /** What to tell people when sandboxes are off on this Binary. */
 export const SANDBOX_SETUP_HINT =
   'Cloud sandboxes need an E2B key. Add E2B_API_KEY to .env (get one at e2b.dev/dashboard) and restart.';
 
-/** A running sandbox, as the chat and Apps & tools show it. */
-export interface SandboxSummary {
+/** What to tell people when there's no Chromium on this Binary. */
+export const BROWSER_SETUP_HINT =
+  'Browsers need Chromium. Run `pnpm browsers:install` and restart the API.';
+
+/** A running computer (a sandbox or a browser), for the chat and Apps & tools. */
+export interface ComputerSummary {
   id: string;
+  kind: ComputerKind;
   threadId: string;
   threadTitle: string | null;
   agentName: string;
@@ -47,17 +60,18 @@ export interface SandboxSummary {
   lastUsedAt: string;
   /** When it stops by itself unless it's used again. */
   expiresAt: string;
+  /** A browser's current page, if it has one. */
+  url: string | null;
 }
 
-/** Apps & tools: whether sandboxes are on, and what's running. */
-export interface SandboxesOverview {
-  /** False without an E2B key: characters get no sandbox. */
-  available: boolean;
-  idleMinutes: number;
-  sandboxes: SandboxSummary[];
+/** Whether each kind is on, and every computer that's running. */
+export interface ComputersOverview {
+  sandbox: {available: boolean; idleMinutes: number};
+  browser: {available: boolean; idleMinutes: number; maxOpen: number};
+  computers: ComputerSummary[];
 }
 
-/** An image a tool made for the person (a chart), served by the API. */
+/** An image a tool made for the person (a chart or a screenshot). */
 export interface ToolImage {
   id: string;
   mime: string;

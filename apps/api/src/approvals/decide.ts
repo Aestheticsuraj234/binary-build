@@ -27,6 +27,7 @@ import type {EngineFactory} from '../engine/factory';
 import {MissingKeyError} from '../engine/factory';
 import {ConflictError, NotFoundError} from '../errors';
 import {toChatMessage} from '../routes/threads';
+import {browserTools} from '../browser/tools';
 import {keepImages} from '../sandbox/images';
 import {sandboxTools} from '../sandbox/tools';
 import {toBinaryTools} from '../tools/composio';
@@ -132,6 +133,22 @@ async function findExactTool(
     }
     // The tool runs in the sandbox of the chat that asked.
     const tool = sandboxTools(deps.sandboxes, {
+      userId,
+      threadId: approval.threadId,
+      agentId: approval.agentId,
+    }).find(candidate => sameSource(sourceOf(candidate), source));
+    if (!tool) {
+      throw gone(`The ${source.tool} tool`);
+    }
+    return {tool, close: async () => {}};
+  }
+
+  if (source.kind === 'browser') {
+    if (!deps.browsers.available) {
+      throw gone('The browser');
+    }
+    // The step runs in the browser of the chat that asked.
+    const tool = browserTools(deps.browsers, {
       userId,
       threadId: approval.threadId,
       agentId: approval.agentId,

@@ -8,6 +8,7 @@ import {logger, schedules, task} from '@trigger.dev/sdk';
 import {parseWorkerEnv} from '../env';
 import type {RoutineExecutor} from '../routines/run-routine';
 import {createRoutineExecutor} from '../routines/run-routine';
+import {BrowserManager} from '../browser/manager';
 import {E2BProvider} from '../sandbox/e2b';
 import {SandboxManager} from '../sandbox/manager';
 import {createComposioGateway} from '../tools/composio';
@@ -47,6 +48,8 @@ function workerDeps() {
           db,
           env.E2B_API_KEY ? new E2BProvider(env.E2B_API_KEY) : null,
         ),
+        // A routine's browser lives in this worker while the run lasts.
+        browsers: new BrowserManager(),
       }),
     };
   }

@@ -18,6 +18,8 @@ export const TEMPLATES = [
     slug: 'research-assistant',
     name: 'Research Assistant',
     role: 'Finds, reads and summarizes sources on any topic.',
+    // Comes with a browser, to open and read pages itself.
+    computers: ['browser' as const],
     instructions:
       'Search the web, open the most relevant pages, and answer with a short summary and a list of sources.',
   },
@@ -28,7 +30,7 @@ export const TEMPLATES = [
     instructions:
       'Explain your plan before editing files. Keep changes small and run the tests after each change.',
     // Comes with a cloud sandbox, where it can run code and draw charts.
-    computer: 'cloud_sandbox' as const,
+    computers: ['cloud_sandbox' as const],
   },
   {
     slug: 'inbox-manager',

@@ -32,6 +32,8 @@ import {
   NotFoundError,
   readJson,
 } from '../errors';
+import type {BrowserManager} from '../browser/manager';
+import type {Computers} from '../computers';
 import type {SandboxManager} from '../sandbox/manager';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
@@ -47,6 +49,8 @@ interface ThreadsRouteOptions {
   builtInTools: () => BinaryTool[];
   composio: ComposioGateway | null;
   sandboxes: SandboxManager;
+  browsers: BrowserManager;
+  computers: Computers;
 }
 
 export function toThreadSummary(
@@ -84,6 +88,8 @@ export function threadsRoutes({
   builtInTools,
   composio,
   sandboxes,
+  browsers,
+  computers,
 }: ThreadsRouteOptions) {
   const threads = new ThreadRepository(db);
   const agents = new AgentRepository(db);
@@ -126,15 +132,15 @@ export function threadsRoutes({
       agent: toAgentSummary(found.agent),
       isFired: found.agent.firedAt !== null,
       messages: rows.map(toChatMessage),
-      sandbox: await sandboxes.summaryForThread(found.thread.id, c.var.user.id),
+      computers: await computers.forThread(found.thread.id, c.var.user.id),
     };
     return c.json(detail);
   });
 
   routes.delete('/:id', async c => {
     const {thread} = await findThread(c);
-    // Its sandbox stops first, so nothing keeps running for a gone chat.
-    await sandboxes.stopForThread(thread.id);
+    // Its sandbox and browser stop first, so nothing runs for a gone chat.
+    await computers.stopForThread(thread.id);
     if (!(await threads.deleteForUser(thread.id, c.var.user.id))) {
       throw new NotFoundError('chat');
     }
@@ -194,7 +200,7 @@ export function threadsRoutes({
       });
 
       const outcome = await generateAnswer(
-        {db, vault, builtInTools, composio, sandboxes},
+        {db, vault, builtInTools, composio, sandboxes, browsers},
         {engine, agent, userId, threadId: thread.id, prompt: message, history},
         send,
       );

@@ -9,6 +9,7 @@ import type {JobRunner} from './jobs/job-runner';
 import {InProcessRunner} from './jobs/job-runner';
 import {TriggerDevRunner} from './jobs/trigger-dev-runner';
 import {createRoutineExecutor} from './routines/run-routine';
+import {BrowserManager} from './browser/manager';
 import {E2BProvider} from './sandbox/e2b';
 import {SandboxManager} from './sandbox/manager';
 import {createComposioGateway} from './tools/composio';
@@ -44,6 +45,12 @@ function main(): void {
     console.log('Cloud sandboxes are off (no E2B_API_KEY).');
   }
 
+  // Browsers, when Chromium is installed (`pnpm browsers:install`).
+  const browsers = new BrowserManager();
+  if (!browsers.available) {
+    console.log('Browsers are off (run `pnpm browsers:install`).');
+  }
+
   // Routines run on Trigger.dev when it's set up, otherwise in this process.
   let jobRunner: JobRunner;
   if (env.TRIGGER_SECRET_KEY) {
@@ -59,6 +66,7 @@ function main(): void {
         vault,
         composio,
         sandboxes: new SandboxManager(db, sandboxProvider),
+        browsers,
       }),
     );
     jobRunner = inProcess;
@@ -83,6 +91,7 @@ function main(): void {
     apiUrl: env.BETTER_AUTH_URL,
     jobRunner,
     sandboxProvider,
+    browsers,
   });
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.
@@ -93,6 +102,7 @@ function main(): void {
 
   const shutDown = () => {
     server.close();
+    void browsers.closeAll();
     void db.$client.end();
   };
   process.on('SIGINT', shutDown);
