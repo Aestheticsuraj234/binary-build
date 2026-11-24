@@ -3,6 +3,8 @@ import {createInterface} from 'node:readline';
 
 import type {RunnerEvent, RunnerJob, RunnerResult} from '@binary/shared';
 
+import {killTree, OWN_GROUP} from './process-tree';
+
 type EngineJob = Extract<RunnerJob, {type: 'engine'}>;
 type Risk = 'read' | 'write' | 'computer';
 
@@ -209,6 +211,8 @@ export function runEngine(
       cwd,
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Its own process group, so a timeout stops everything it started.
+      ...OWN_GROUP,
     });
     let finalText = '';
     let failure: string | undefined;
@@ -253,7 +257,7 @@ export function runEngine(
     });
 
     const timer = setTimeout(() => {
-      child.kill('SIGKILL');
+      killTree(child);
       failure = `${label} took longer than ten minutes, so it was stopped.`;
     }, ENGINE_TIMEOUT_MS);
 

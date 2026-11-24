@@ -72,15 +72,20 @@ describe('jobs', () => {
     });
   });
 
-  it('stops a command that runs too long', async () => {
+  it('stops a command that runs too long, and everything it started', async () => {
+    const started = Date.now();
+    // Two processes, so the shell can't just become `sleep`: the child
+    // must be stopped too, or the Runner waits for it.
     const result = await runJob(
-      {type: 'run_command', command: 'sleep 5', cwd: null},
+      {type: 'run_command', command: 'sleep 5; echo never', cwd: null},
       folders,
       {commandTimeoutMs: 200},
     );
+    expect(Date.now() - started).toBeLessThan(3000);
     expect(result.ok && (result.output as {stderr: string}).stderr).toContain(
       'Stopped after 0.2 seconds.',
     );
+    expect(result.ok && (result.output as {stdout: string}).stdout).toBe('');
   });
 
   it('refuses paths and command folders outside, touching nothing', async () => {

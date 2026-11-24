@@ -5,6 +5,7 @@ import path from 'node:path';
 import type {RunnerEvent, RunnerJob, RunnerResult} from '@binary/shared';
 
 import {runEngine} from './engines';
+import {killTree, OWN_GROUP} from './process-tree';
 import type {SharedFolders} from './paths';
 import {PathRefusedError} from './paths';
 
@@ -32,13 +33,18 @@ function runCommand(
       process.platform === 'win32'
         ? {file: 'cmd.exe', args: ['/d', '/s', '/c', command]}
         : {file: '/bin/sh', args: ['-c', command]};
-    const child = spawn(shell.file, shell.args, {cwd, env: process.env});
+    const child = spawn(shell.file, shell.args, {
+      cwd,
+      env: process.env,
+      ...OWN_GROUP,
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', chunk => (stdout += String(chunk)));
     child.stderr.on('data', chunk => (stderr += String(chunk)));
     const timer = setTimeout(() => {
-      child.kill('SIGKILL');
+      // The whole command, including anything it started.
+      killTree(child);
       stderr += `\nStopped after ${timeoutMs / 1000} seconds.`;
     }, timeoutMs);
     child.on('close', code => {
