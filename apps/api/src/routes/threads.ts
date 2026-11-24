@@ -11,7 +11,6 @@ import {
   API_ERROR_CODES,
   CHAT_CONTEXT_MESSAGES,
   contextWindow,
-  getProvider,
   sendMessageSchema,
   startChatSchema,
   titleFromMessage,
@@ -21,9 +20,7 @@ import {Hono} from 'hono';
 
 import {generateAnswer} from '../chat/answer';
 import {modelTurns} from '../chat/history';
-import type {Engine} from '../engine/engine';
 import type {EngineFactory} from '../engine/factory';
-import {MissingKeyError} from '../engine/factory';
 import type {SignedInEnv} from '../middleware/require-user';
 import {
   ConflictError,
@@ -33,12 +30,14 @@ import {
   readJson,
 } from '../errors';
 import type {BrowserManager} from '../browser/manager';
+import type {DesktopManager} from '../desktop/manager';
+import {engineForAgent} from '../engine/agent-engine';
+import type {RunnerAccess} from '../runners/access';
 import type {Computers} from '../computers';
 import type {SandboxManager} from '../sandbox/manager';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
 import type {Vault} from '../vault';
-import {VaultError} from '../vault';
 import {toAgentSummary} from './agents';
 import {ndjsonResponse} from './stream-answer';
 
@@ -50,6 +49,8 @@ interface ThreadsRouteOptions {
   composio: ComposioGateway | null;
   sandboxes: SandboxManager;
   browsers: BrowserManager;
+  desktops: DesktopManager;
+  runners: RunnerAccess;
   computers: Computers;
 }
 
@@ -89,6 +90,8 @@ export function threadsRoutes({
   composio,
   sandboxes,
   browsers,
+  desktops,
+  runners,
   computers,
 }: ThreadsRouteOptions) {
   const threads = new ThreadRepository(db);
@@ -161,24 +164,12 @@ export function threadsRoutes({
         API_ERROR_CODES.readOnly,
       );
     }
-    if (!agent.provider || !agent.model) {
-      throw new NoKeyError(
-        `${agent.name} has no model yet. Pick one on the edit page.`,
-      );
-    }
-    const name = getProvider(agent.provider).name;
     const userId = c.var.user.id;
-    let engine: Engine;
-    try {
-      engine = await engineFor(userId, agent.provider, agent.model);
-    } catch (error) {
-      if (error instanceof MissingKeyError || error instanceof VaultError) {
-        throw new NoKeyError(
-          `${agent.name} thinks with ${name}. Add your ${name} key on the API keys page.`,
-        );
-      }
-      throw error;
+    const chosen = await engineForAgent({engineFor, runners}, agent, userId);
+    if (!chosen.ok) {
+      throw new NoKeyError(chosen.error);
     }
+    const {engine} = chosen;
 
     // Your message is saved before the model is asked, so it is never lost.
     const question = await threads.addQuestion(
@@ -200,7 +191,16 @@ export function threadsRoutes({
       });
 
       const outcome = await generateAnswer(
-        {db, vault, builtInTools, composio, sandboxes, browsers},
+        {
+          db,
+          vault,
+          builtInTools,
+          composio,
+          sandboxes,
+          browsers,
+          desktops,
+          runners,
+        },
         {engine, agent, userId, threadId: thread.id, prompt: message, history},
         send,
       );

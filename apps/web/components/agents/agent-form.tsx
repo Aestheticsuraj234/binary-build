@@ -5,6 +5,8 @@ import type {
   AgentSummary,
   ApprovalMode,
   ComputerKind,
+  EngineKind,
+  RunnerSummary,
   FieldErrors,
   Mood,
   ProviderId,
@@ -17,6 +19,10 @@ import {
   BROWSER_SETUP_HINT,
   COMPUTER_INFO,
   COMPUTER_KINDS,
+  DESKTOP_SETUP_HINT,
+  ENGINE_INFO,
+  ENGINE_KINDS,
+  RUNNER_SETUP_HINT,
   SANDBOX_SETUP_HINT,
   characterOf,
   getProvider,
@@ -45,8 +51,10 @@ interface AgentFormProps {
   initial: AgentFormValues;
   /** Providers the person has a key for; the only ones they can pick. */
   connectedProviders: ProviderId[];
-  /** Which kinds of computer this Binary can run (E2B key, Chromium). */
+  /** Which kinds of computer this Binary can run (E2B key, Chromium, a Runner). */
   available: Record<ComputerKind, boolean>;
+  /** Your paired computers, for Your computer and Claude Code / Codex. */
+  runners: RunnerSummary[];
   agentId?: string;
   templateId?: string | null;
 }
@@ -90,6 +98,7 @@ export function AgentForm({
   initial,
   connectedProviders,
   available,
+  runners,
   agentId,
   templateId,
 }: AgentFormProps) {
@@ -104,6 +113,40 @@ export function AgentForm({
   const character = characterOf(values.avatar);
   const displayName = values.name.trim() || character.name;
   const models = getProvider(values.provider).models;
+  const pairedRunners = runners.filter(runner => runner.status !== 'pairing');
+  const hasRunner = pairedRunners.length > 0;
+  const needsRunner =
+    values.engine !== 'api' || values.computers.includes('runner');
+
+  /** Ticks or unticks a computer; Your computer picks your only one. */
+  function toggleComputer(kind: ComputerKind, isChecked: boolean) {
+    setValues(current => ({
+      ...current,
+      computers: isChecked
+        ? current.computers.filter(other => other !== kind)
+        : COMPUTER_KINDS.filter(
+            other => other === kind || current.computers.includes(other),
+          ),
+      runnerId:
+        current.runnerId ??
+        (kind === 'runner' && !isChecked && pairedRunners.length === 1
+          ? pairedRunners[0]!.id
+          : null),
+    }));
+  }
+
+  /** Choosing a CLI (or Your computer) picks your only computer for you. */
+  function chooseEngine(engine: EngineKind) {
+    setValues(current => ({
+      ...current,
+      engine,
+      runnerId:
+        current.runnerId ??
+        (engine !== 'api' && pairedRunners.length === 1
+          ? pairedRunners[0]!.id
+          : null),
+    }));
+  }
 
   function set<K extends keyof AgentFormValues>(
     field: K,
@@ -271,59 +314,101 @@ export function AgentForm({
           />
         </Field>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Field
-            id="agent-provider"
-            label="Thinks with"
-            error={errors.provider}
-          >
-            <div className="relative">
-              <select
-                id="agent-provider"
-                value={values.provider}
-                onChange={event =>
-                  chooseProvider(event.target.value as ProviderId)
-                }
-                aria-invalid={errors.provider ? true : undefined}
-                aria-describedby={describedBy('provider')}
-                className={SELECT_CLASS}
-              >
-                {connectedProviders.map(provider => (
-                  <option key={provider} value={provider}>
-                    {getProvider(provider).name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon
-                aria-hidden
-                className="pointer-events-none absolute top-3.5 right-3 size-4 text-muted-foreground"
-              />
-            </div>
-          </Field>
+        <fieldset>
+          <legend className="mb-3 text-sm font-medium">Thinks with</legend>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {ENGINE_KINDS.map(engine => {
+              const isOff =
+                engine !== 'api' && !hasRunner && values.engine !== engine;
+              return (
+                <label
+                  key={engine}
+                  className={cn(
+                    'flex flex-col gap-1 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50',
+                    isOff ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                    values.engine === engine
+                      ? 'border-primary bg-secondary'
+                      : 'border-input hover:bg-secondary/60',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="engine"
+                    value={engine}
+                    checked={values.engine === engine}
+                    disabled={isOff}
+                    onChange={() => chooseEngine(engine)}
+                    className="sr-only"
+                  />
+                  <span className="font-medium">
+                    {engine === 'api'
+                      ? 'An AI model'
+                      : ENGINE_INFO[engine].label}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {engine === 'api'
+                      ? 'With your own key, from the API keys page.'
+                      : hasRunner
+                        ? `${ENGINE_INFO[engine].description} Install and sign in to it there first.`
+                        : RUNNER_SETUP_HINT}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
 
-          <Field id="agent-model" label="Model" error={errors.model}>
-            <div className="relative">
-              <select
-                id="agent-model"
-                value={values.model}
-                onChange={event => set('model', event.target.value)}
-                aria-invalid={errors.model ? true : undefined}
-                aria-describedby={describedBy('model')}
-                className={cn(SELECT_CLASS, 'font-mono')}
-              >
-                {models.map(model => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon
-                aria-hidden
-                className="pointer-events-none absolute top-3.5 right-3 size-4 text-muted-foreground"
-              />
-            </div>
-          </Field>
-        </div>
+        {values.engine === 'api' && (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <Field id="agent-provider" label="Provider" error={errors.provider}>
+              <div className="relative">
+                <select
+                  id="agent-provider"
+                  value={values.provider}
+                  onChange={event =>
+                    chooseProvider(event.target.value as ProviderId)
+                  }
+                  aria-invalid={errors.provider ? true : undefined}
+                  aria-describedby={describedBy('provider')}
+                  className={SELECT_CLASS}
+                >
+                  {connectedProviders.map(provider => (
+                    <option key={provider} value={provider}>
+                      {getProvider(provider).name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon
+                  aria-hidden
+                  className="pointer-events-none absolute top-3.5 right-3 size-4 text-muted-foreground"
+                />
+              </div>
+            </Field>
+
+            <Field id="agent-model" label="Model" error={errors.model}>
+              <div className="relative">
+                <select
+                  id="agent-model"
+                  value={values.model}
+                  onChange={event => set('model', event.target.value)}
+                  aria-invalid={errors.model ? true : undefined}
+                  aria-describedby={describedBy('model')}
+                  className={cn(SELECT_CLASS, 'font-mono')}
+                >
+                  {models.map(model => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon
+                  aria-hidden
+                  className="pointer-events-none absolute top-3.5 right-3 size-4 text-muted-foreground"
+                />
+              </div>
+            </Field>
+          </div>
+        )}
 
         <fieldset>
           <legend className="mb-1 text-sm font-medium">Permissions</legend>
@@ -388,18 +473,7 @@ export function AgentForm({
                     value={kind}
                     checked={isChecked}
                     disabled={isOff}
-                    onChange={() =>
-                      set(
-                        'computers',
-                        isChecked
-                          ? values.computers.filter(other => other !== kind)
-                          : COMPUTER_KINDS.filter(
-                              other =>
-                                other === kind ||
-                                values.computers.includes(other),
-                            ),
-                      )
-                    }
+                    onChange={() => toggleComputer(kind, isChecked)}
                     className="sr-only"
                   />
                   <span className="font-medium">
@@ -409,15 +483,49 @@ export function AgentForm({
                   <span className="text-muted-foreground">
                     {available[kind]
                       ? COMPUTER_INFO[kind].description
-                      : kind === 'cloud_sandbox'
-                        ? SANDBOX_SETUP_HINT
-                        : BROWSER_SETUP_HINT}
+                      : {
+                          cloud_sandbox: SANDBOX_SETUP_HINT,
+                          browser: BROWSER_SETUP_HINT,
+                          runner: RUNNER_SETUP_HINT,
+                          cloud_desktop: DESKTOP_SETUP_HINT,
+                        }[kind]}
                   </span>
                 </label>
               );
             })}
           </div>
         </fieldset>
+
+        {needsRunner && (
+          <Field
+            id="agent-runnerId"
+            label="Which computer"
+            error={errors.runnerId}
+          >
+            <div className="relative">
+              <select
+                id="agent-runnerId"
+                value={values.runnerId ?? ''}
+                onChange={event => set('runnerId', event.target.value || null)}
+                aria-invalid={errors.runnerId ? true : undefined}
+                aria-describedby={describedBy('runnerId')}
+                className={SELECT_CLASS}
+              >
+                <option value="">Choose a computer…</option>
+                {pairedRunners.map(runner => (
+                  <option key={runner.id} value={runner.id}>
+                    {runner.name}
+                    {runner.status === 'online' ? '' : ` (${runner.status})`}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon
+                aria-hidden
+                className="pointer-events-none absolute top-3.5 right-3 size-4 text-muted-foreground"
+              />
+            </div>
+          </Field>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <Button

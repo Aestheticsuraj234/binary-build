@@ -8,6 +8,7 @@ import {
   FlaskConicalIcon,
   InboxIcon,
   KeyRoundIcon,
+  LaptopIcon,
   PlugIcon,
   Repeat2Icon,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   {href: '/', label: 'Discover', icon: CompassIcon},
   {href: '/routines', label: 'Routines', icon: Repeat2Icon},
   {href: '/apps', label: 'Apps & tools', icon: PlugIcon},
+  {href: '/computers', label: 'Your computers', icon: LaptopIcon},
   {href: '/integrations', label: 'Integrations', icon: BlocksIcon},
   {href: '/playground', label: 'Playground', icon: FlaskConicalIcon},
   {href: '/keys', label: 'API keys', icon: KeyRoundIcon},

@@ -36,6 +36,8 @@ async function Routine({
           templateId: null,
           approvalMode: DEFAULT_APPROVAL_MODE,
           computers: [],
+          engine: 'api' as const,
+          runnerId: null,
         },
         ...agents,
       ];

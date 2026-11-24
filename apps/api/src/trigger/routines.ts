@@ -9,6 +9,8 @@ import {parseWorkerEnv} from '../env';
 import type {RoutineExecutor} from '../routines/run-routine';
 import {createRoutineExecutor} from '../routines/run-routine';
 import {BrowserManager} from '../browser/manager';
+import {DesktopManager} from '../desktop/manager';
+import {E2BDesktopProvider} from '../desktop/e2b-desktop';
 import {E2BProvider} from '../sandbox/e2b';
 import {SandboxManager} from '../sandbox/manager';
 import {createComposioGateway} from '../tools/composio';
@@ -50,6 +52,12 @@ function workerDeps() {
         ),
         // A routine's browser lives in this worker while the run lasts.
         browsers: new BrowserManager(),
+        desktops: new DesktopManager(
+          db,
+          env.E2B_API_KEY ? new E2BDesktopProvider(env.E2B_API_KEY) : null,
+        ),
+        // Your computer can't be reached from here: Runner jobs live in the
+        // API (the executor says so if a routine tries).
       }),
     };
   }

@@ -1,5 +1,5 @@
 import type {AgentTemplateSummary, ProviderKeyStatus} from '@binary/shared';
-import type {ComputersOverview} from '@binary/shared';
+import type {ComputersOverview, RunnerSummary} from '@binary/shared';
 import {
   characterOf,
   colors,
@@ -18,6 +18,7 @@ import {useApi} from '@/hooks/use-api';
 export default function NewAgentScreen() {
   const {template: slug} = useLocalSearchParams<{template?: string}>();
   const computers = useApi<ComputersOverview>('/api/computers');
+  const runners = useApi<{runners: RunnerSummary[]}>('/api/runners');
   const templates = useApi<{templates: AgentTemplateSummary[]}>(
     '/api/agent-templates',
   );
@@ -65,7 +66,12 @@ export default function NewAgentScreen() {
         available={{
           cloud_sandbox: computers.data?.sandbox.available ?? false,
           browser: computers.data?.browser.available ?? false,
+          runner: (runners.data?.runners ?? []).some(
+            r => r.status !== 'pairing',
+          ),
+          cloud_desktop: computers.data?.desktop.available ?? false,
         }}
+        runners={runners.data?.runners ?? []}
         templateId={template?.id ?? null}
         initial={{
           name: character.name,
@@ -76,6 +82,8 @@ export default function NewAgentScreen() {
           model: getProvider(provider).defaultModel,
           approvalMode: DEFAULT_APPROVAL_MODE,
           computers: template?.computers ?? [],
+          engine: 'api',
+          runnerId: null,
         }}
       />
     </>

@@ -2,7 +2,9 @@ import type {
   AgentInput,
   AgentSummary,
   ComputerKind,
+  EngineKind,
   FieldErrors,
+  RunnerSummary,
   Mood,
   ProviderId,
 } from '@binary/shared';
@@ -14,6 +16,10 @@ import {
   BROWSER_SETUP_HINT,
   COMPUTER_INFO,
   COMPUTER_KINDS,
+  DESKTOP_SETUP_HINT,
+  ENGINE_INFO,
+  ENGINE_KINDS,
+  RUNNER_SETUP_HINT,
   SANDBOX_SETUP_HINT,
   characterOf,
   colors,
@@ -52,6 +58,8 @@ interface AgentFormProps {
   connectedProviders: ProviderId[];
   /** Which kinds of computer the server can run (E2B key, Chromium). */
   available: Record<ComputerKind, boolean>;
+  /** Your paired computers, for Your computer and Claude Code / Codex. */
+  runners: RunnerSummary[];
   agentId?: string;
   templateId?: string | null;
 }
@@ -112,11 +120,44 @@ export function AgentForm({
   initial,
   connectedProviders,
   available,
+  runners,
   agentId,
   templateId,
 }: AgentFormProps) {
   const router = useRouter();
   const [values, setValues] = useState(initial);
+  const pairedRunners = runners.filter(runner => runner.status !== 'pairing');
+  const hasRunner = pairedRunners.length > 0;
+  const needsRunner =
+    values.engine !== 'api' || values.computers.includes('runner');
+
+  /** Picks your only computer for you, when one is needed. */
+  const onlyRunner = (current: string | null) =>
+    current ?? (pairedRunners.length === 1 ? pairedRunners[0]!.id : null);
+
+  function chooseEngine(engine: EngineKind) {
+    setValues(current => ({
+      ...current,
+      engine,
+      runnerId:
+        engine === 'api' ? current.runnerId : onlyRunner(current.runnerId),
+    }));
+  }
+
+  function toggleComputer(kind: ComputerKind, isOn: boolean) {
+    setValues(current => ({
+      ...current,
+      computers: isOn
+        ? current.computers.filter(other => other !== kind)
+        : COMPUTER_KINDS.filter(
+            other => other === kind || current.computers.includes(other),
+          ),
+      runnerId:
+        kind === 'runner' && !isOn
+          ? onlyRunner(current.runnerId)
+          : current.runnerId,
+    }));
+  }
   const [errors, setErrors] = useState<FieldErrors<AgentFormValues>>({});
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState<'save' | 'fire'>();
@@ -273,26 +314,49 @@ export function AgentForm({
 
         <ChoiceRow
           label="Thinks with"
-          options={connectedProviders}
-          value={values.provider}
-          onChange={provider =>
-            setValues(current => ({
-              ...current,
-              provider,
-              model: getProvider(provider).defaultModel,
-            }))
+          options={ENGINE_KINDS.filter(
+            engine => engine === 'api' || hasRunner || values.engine === engine,
+          )}
+          value={values.engine}
+          onChange={chooseEngine}
+          describe={engine =>
+            engine === 'api' ? 'An AI model' : ENGINE_INFO[engine].label
           }
-          describe={provider => getProvider(provider).name}
-          error={errors.provider}
         />
-        <ChoiceRow
-          label="Model"
-          options={getProvider(values.provider).models}
-          value={values.model}
-          onChange={model => set('model', model)}
-          describe={model => model}
-          error={errors.model}
-        />
+        <Text style={styles.modeHint}>
+          {values.engine === 'api'
+            ? 'With your own key, from the API keys page.'
+            : `${ENGINE_INFO[values.engine].description} Install and sign in to it there first.`}
+          {!hasRunner && values.engine === 'api'
+            ? ` Claude Code and Codex need a paired computer: ${RUNNER_SETUP_HINT}`
+            : ''}
+        </Text>
+        {values.engine === 'api' && (
+          <>
+            <ChoiceRow
+              label="Provider"
+              options={connectedProviders}
+              value={values.provider}
+              onChange={provider =>
+                setValues(current => ({
+                  ...current,
+                  provider,
+                  model: getProvider(provider).defaultModel,
+                }))
+              }
+              describe={provider => getProvider(provider).name}
+              error={errors.provider}
+            />
+            <ChoiceRow
+              label="Model"
+              options={getProvider(values.provider).models}
+              value={values.model}
+              onChange={model => set('model', model)}
+              describe={model => model}
+              error={errors.model}
+            />
+          </>
+        )}
 
         <ChoiceRow
           label="Permissions"
@@ -318,17 +382,7 @@ export function AgentForm({
                 accessibilityRole="checkbox"
                 accessibilityState={{checked: isOn, disabled: isOff}}
                 disabled={isOff}
-                onPress={() =>
-                  set(
-                    'computers',
-                    isOn
-                      ? values.computers.filter(other => other !== kind)
-                      : COMPUTER_KINDS.filter(
-                          other =>
-                            other === kind || values.computers.includes(other),
-                        ),
-                  )
-                }
+                onPress={() => toggleComputer(kind, isOn)}
                 style={[
                   styles.computer,
                   isOn && styles.choiceSelected,
@@ -342,14 +396,33 @@ export function AgentForm({
                 <Text style={styles.modeHint}>
                   {available[kind]
                     ? COMPUTER_INFO[kind].description
-                    : kind === 'cloud_sandbox'
-                      ? SANDBOX_SETUP_HINT
-                      : BROWSER_SETUP_HINT}
+                    : {
+                        cloud_sandbox: SANDBOX_SETUP_HINT,
+                        browser: BROWSER_SETUP_HINT,
+                        runner: RUNNER_SETUP_HINT,
+                        cloud_desktop: DESKTOP_SETUP_HINT,
+                      }[kind]}
                 </Text>
               </Pressable>
             );
           })}
         </View>
+
+        {needsRunner && (
+          <ChoiceRow
+            label="Which computer"
+            options={pairedRunners.map(runner => runner.id)}
+            value={values.runnerId ?? ''}
+            onChange={runnerId => set('runnerId', runnerId)}
+            describe={id => {
+              const runner = pairedRunners.find(other => other.id === id);
+              return runner
+                ? `${runner.name}${runner.status === 'online' ? '' : ` (${runner.status})`}`
+                : 'Computer';
+            }}
+            error={errors.runnerId}
+          />
+        )}
 
         {formError && <Text style={styles.formError}>{formError}</Text>}
 

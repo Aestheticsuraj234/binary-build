@@ -11,7 +11,7 @@ export interface TemplateInput {
   role: string;
   instructions: string;
   /** The computers characters hired from it start with. */
-  computers?: Array<'cloud_sandbox' | 'browser'>;
+  computers?: Array<'cloud_sandbox' | 'browser' | 'runner' | 'cloud_desktop'>;
 }
 
 /** Queries for the `agent_templates` table, which everyone shares. */

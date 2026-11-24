@@ -4,20 +4,21 @@ import {
   RoutineRunRepository,
   UserSettingsRepository,
 } from '@binary/db';
-import {getProvider} from '@binary/shared';
 
 import type {AnswerDeps} from '../chat/answer';
 import {generateAnswer} from '../chat/answer';
-import type {Engine} from '../engine/engine';
 import type {EngineFactory, ModelBuilder} from '../engine/factory';
-import {createEngineFactory, MissingKeyError} from '../engine/factory';
+import {createEngineFactory} from '../engine/factory';
 import {BrowserManager} from '../browser/manager';
+import {DesktopManager} from '../desktop/manager';
+import {engineForAgent} from '../engine/agent-engine';
+import {RunnerAccess} from '../runners/access';
+import {RunnerHub} from '../runners/hub';
 import {SandboxManager} from '../sandbox/manager';
 import {builtInTools as defaultBuiltInTools} from '../tools/built-in';
 import type {ComposioGateway} from '../tools/composio';
 import type {BinaryTool} from '../tools/toolbox';
 import type {Vault} from '../vault';
-import {VaultError} from '../vault';
 import {runPrompt, runTitle} from './prompt';
 
 /** Everything a run needs: the chat pipeline's deps plus an engine factory. */
@@ -44,6 +45,10 @@ export type RoutineExecutor = (
   runId: string,
   options?: RunOptions,
 ) => Promise<RunResult>;
+
+/** Why a routine on the Trigger.dev worker can't use your computer. */
+export const ROUTINES_CANT_REACH =
+  "Routines on Trigger.dev can't reach your computer yet: Runner jobs live in the API.";
 
 /** A problem that ends a run with a message the person can act on. */
 class RunFailure extends Error {}
@@ -89,27 +94,11 @@ export async function runRoutine(
         `${agent.name} was fired, so this routine can't run. Choose someone else to run it.`,
       );
     }
-    if (!agent.provider || !agent.model) {
-      throw new RunFailure(
-        `${agent.name} has no model yet. Pick one on the edit page.`,
-      );
+    const chosen = await engineForAgent(deps, agent, routine.userId);
+    if (!chosen.ok) {
+      throw new RunFailure(chosen.error);
     }
-    let engine: Engine;
-    try {
-      engine = await deps.engineFor(
-        routine.userId,
-        agent.provider,
-        agent.model,
-      );
-    } catch (error) {
-      if (error instanceof MissingKeyError || error instanceof VaultError) {
-        const name = getProvider(agent.provider).name;
-        throw new RunFailure(
-          `${agent.name} thinks with ${name}. Add your ${name} key on the API keys page.`,
-        );
-      }
-      throw error;
-    }
+    const {engine} = chosen;
 
     const prompt = runPrompt(routine.instructions, run.payload);
     // A retry carries on in the transcript the first attempt opened.
@@ -170,6 +159,10 @@ export interface ExecutorOptions {
   sandboxes?: SandboxManager;
   /** Browsers; off unless given. */
   browsers?: BrowserManager;
+  /** Cloud desktops; off unless given. */
+  desktops?: DesktopManager;
+  /** Your computers. Unreachable unless given. */
+  runners?: RunnerAccess;
 }
 
 /** Builds `runRoutine` with its dependencies filled in. */
@@ -181,6 +174,8 @@ export function createRoutineExecutor({
   composio = null,
   sandboxes = new SandboxManager(db, null),
   browsers = new BrowserManager({available: false}),
+  desktops = new DesktopManager(db, null),
+  runners = new RunnerAccess(db, new RunnerHub(), ROUTINES_CANT_REACH),
 }: ExecutorOptions): RoutineExecutor {
   const deps: RunDeps = {
     db,
@@ -189,6 +184,8 @@ export function createRoutineExecutor({
     composio,
     sandboxes,
     browsers,
+    desktops,
+    runners,
     engineFor: createEngineFactory({db, vault, buildModel}),
   };
   return (runId, options) => runRoutine(deps, runId, options);

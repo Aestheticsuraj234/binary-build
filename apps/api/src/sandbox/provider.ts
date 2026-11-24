@@ -29,6 +29,7 @@ export interface FileEntry {
 /** One live sandbox, connected. */
 export interface SandboxHandle {
   readonly id: string;
+  readonly liveUrl?: null;
   /** Keeps it up for `timeoutMs` more from now. */
   keepAlive(timeoutMs: number): Promise<void>;
   runCode(code: string, language: 'python' | 'javascript'): Promise<CodeRun>;

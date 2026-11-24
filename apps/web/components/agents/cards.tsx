@@ -1,5 +1,5 @@
 import type {AgentSummary, AgentTemplateSummary} from '@binary/shared';
-import {characterOf, getProvider} from '@binary/shared';
+import {characterOf, ENGINE_INFO, getProvider} from '@binary/shared';
 import {cn} from 'cn';
 import {ArrowRightIcon, PlusIcon} from 'lucide-react';
 import Link from 'next/link';
@@ -12,12 +12,24 @@ import {Badge} from '@/components/ui/badge';
 export function ModelBadge({
   provider,
   model,
+  engine = 'api',
   className,
 }: {
   provider: AgentSummary['provider'];
   model: string | null;
+  /** Claude Code or Codex show as themselves, not the API model. */
+  engine?: AgentSummary['engine'];
   className?: string;
 }) {
+  if (engine !== 'api') {
+    return (
+      <Badge className={cn('max-w-full font-mono text-[11px]', className)}>
+        <span className="truncate">
+          {ENGINE_INFO[engine].label} · on your computer
+        </span>
+      </Badge>
+    );
+  }
   if (!provider || !model) {
     return null;
   }
@@ -70,7 +82,11 @@ export function AgentCard({agent}: {agent: AgentSummary}) {
         {agent.role}
       </p>
       <div>
-        <ModelBadge provider={agent.provider} model={agent.model} />
+        <ModelBadge
+          provider={agent.provider}
+          model={agent.model}
+          engine={agent.engine}
+        />
       </div>
     </CharacterCard>
   );

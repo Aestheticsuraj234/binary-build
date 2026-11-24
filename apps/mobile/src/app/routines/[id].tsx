@@ -141,6 +141,8 @@ export default function RoutineScreen() {
           templateId: null,
           approvalMode: DEFAULT_APPROVAL_MODE,
           computers: [],
+          engine: 'api' as const,
+          runnerId: null,
         },
         ...agents.data.agents,
       ];

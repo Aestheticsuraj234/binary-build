@@ -8,6 +8,7 @@ import {createAuth} from '../src/auth';
 import type {ModelBuilder} from '../src/engine/factory';
 import type {JobRunner} from '../src/jobs/job-runner';
 import type {BrowserManager} from '../src/browser/manager';
+import type {DesktopProvider} from '../src/desktop/provider';
 import type {SandboxProvider} from '../src/sandbox/provider';
 import type {ComposioGateway} from '../src/tools/composio';
 import type {BinaryTool} from '../src/tools/toolbox';
@@ -33,6 +34,8 @@ export function createTestApp(
     sandboxProvider?: SandboxProvider | null;
     /** Browsers (allowed to reach the test server), or none. */
     browsers?: BrowserManager;
+    /** Cloud desktops (a fake in tests), or none. */
+    desktopProvider?: DesktopProvider | null;
   } = {},
 ) {
   const db: Database = createDb(TEST_DATABASE_URL);
@@ -57,6 +60,7 @@ export function createTestApp(
     jobRunner: options.jobRunner?.({db, vault}),
     sandboxProvider: options.sandboxProvider ?? null,
     browsers: options.browsers,
+    desktopProvider: options.desktopProvider ?? null,
   });
   return {app, db, vault};
 }

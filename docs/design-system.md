@@ -201,6 +201,21 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
 - **Charts** sit under their tool card, full width on white, so axes stay
   readable on the dark theme.
 
+## Your computers
+
+- **Your computers** sits in the main links (a laptop icon). The page has
+  **Add a computer** (a name, then the two commands with copy buttons and a
+  note that only `--folder`s are shared) and **Paired**: each computer's
+  name, OS, an Online / Offline / Paused / Waiting to pair pill (lime dot
+  when online), its shared folders in mono, **Pause/Resume** (secondary)
+  and **Remove** (ghost, asks once).
+- **Thinks with** offers An AI model, Claude Code and Codex as cards; CLI
+  characters show "Claude Code · on your computer" where the model badge
+  was. A **Which computer** select appears when one is needed.
+- Commands on your computer read as `$ cat notes.md` with "On your
+  computer" above; desktop steps read as "Click at (120, 340)". A cloud
+  desktop's pill reads **Desktop on** with an eye (watch live) and Stop.
+
 ## Today
 
 - **Today** is first in the main links, with an amber count of requests

@@ -10,6 +10,10 @@ import {InProcessRunner} from './jobs/job-runner';
 import {TriggerDevRunner} from './jobs/trigger-dev-runner';
 import {createRoutineExecutor} from './routines/run-routine';
 import {BrowserManager} from './browser/manager';
+import {DesktopManager} from './desktop/manager';
+import {E2BDesktopProvider} from './desktop/e2b-desktop';
+import {RunnerAccess} from './runners/access';
+import {RunnerHub} from './runners/hub';
 import {E2BProvider} from './sandbox/e2b';
 import {SandboxManager} from './sandbox/manager';
 import {createComposioGateway} from './tools/composio';
@@ -42,8 +46,13 @@ function main(): void {
     ? new E2BProvider(env.E2B_API_KEY)
     : null;
   if (!sandboxProvider) {
-    console.log('Cloud sandboxes are off (no E2B_API_KEY).');
+    console.log('Cloud sandboxes and desktops are off (no E2B_API_KEY).');
   }
+  const desktopProvider = env.E2B_API_KEY
+    ? new E2BDesktopProvider(env.E2B_API_KEY)
+    : null;
+  // Jobs for Runners on people's computers, which ask this API for work.
+  const runnerHub = new RunnerHub();
 
   // Browsers, when Chromium is installed (`pnpm browsers:install`).
   const browsers = new BrowserManager();
@@ -67,6 +76,8 @@ function main(): void {
         composio,
         sandboxes: new SandboxManager(db, sandboxProvider),
         browsers,
+        desktops: new DesktopManager(db, desktopProvider),
+        runners: new RunnerAccess(db, runnerHub),
       }),
     );
     jobRunner = inProcess;
@@ -92,6 +103,8 @@ function main(): void {
     jobRunner,
     sandboxProvider,
     browsers,
+    desktopProvider,
+    runnerHub,
   });
 
   // 0.0.0.0 makes the API reachable from a phone on the same Wi-Fi.

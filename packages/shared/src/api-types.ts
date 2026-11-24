@@ -1,5 +1,6 @@
 import type {ApprovalMode} from './approvals';
 import type {ComputerKind, ComputerSummary} from './computers';
+import type {EngineKind} from './runners';
 import type {ProviderId} from './providers';
 import type {ToolCallRecord} from './tools';
 
@@ -114,6 +115,10 @@ export interface AgentSummary {
   approvalMode: ApprovalMode;
   /** Its computers: a cloud sandbox, a browser, both or none. */
   computers: ComputerKind[];
+  /** What it thinks with: an API model, Claude Code or Codex. */
+  engine: EngineKind;
+  /** The Runner it uses, for Your computer and CLI engines. */
+  runnerId: string | null;
 }
 
 /** A ready-made starting point for a new agent. */

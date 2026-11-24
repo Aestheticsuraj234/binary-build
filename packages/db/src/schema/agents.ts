@@ -2,6 +2,7 @@ import {sql} from 'drizzle-orm';
 import {index, pgTable, text, timestamp, uuid} from 'drizzle-orm/pg-core';
 
 import {user} from './auth';
+import {runners} from './runners';
 
 /** A ready-made starting point for a new agent, e.g. "Research Assistant". */
 export const agentTemplates = pgTable('agent_templates', {
@@ -11,7 +12,9 @@ export const agentTemplates = pgTable('agent_templates', {
   role: text('role').notNull(),
   instructions: text('instructions').notNull(),
   /** The computers characters hired from it start with. */
-  computers: text('computers', {enum: ['cloud_sandbox', 'browser']})
+  computers: text('computers', {
+    enum: ['cloud_sandbox', 'browser', 'runner', 'cloud_desktop'],
+  })
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
@@ -51,10 +54,20 @@ export const agents = pgTable(
       .notNull()
       .default('auto_reads'),
     /** Its computers: a cloud sandbox and/or a browser, one per chat. */
-    computers: text('computers', {enum: ['cloud_sandbox', 'browser']})
+    computers: text('computers', {
+      enum: ['cloud_sandbox', 'browser', 'runner', 'cloud_desktop'],
+    })
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /** What it thinks with: an API model, or a CLI on your computer. */
+    engine: text('engine', {enum: ['api', 'claude_code', 'codex']})
+      .notNull()
+      .default('api'),
+    /** The Runner it uses, for Your computer and CLI engines. */
+    runnerId: uuid('runner_id').references(() => runners.id, {
+      onDelete: 'set null',
+    }),
     /**
      * Set when the agent is fired. A fired agent leaves the crew, but its
      * chats can still be read, so the row stays.

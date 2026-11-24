@@ -32,10 +32,11 @@ export class SandboxRepository {
       );
   }
 
-  /** The chat's running sandbox, if there is one. */
+  /** The chat's running sandbox (or desktop), if there is one. */
   async runningForThread(
     threadId: string,
     userId: string,
+    kind: SandboxRow['kind'] = 'sandbox',
   ): Promise<SandboxRow | undefined> {
     const [row] = await this.db
       .select()
@@ -44,6 +45,7 @@ export class SandboxRepository {
         and(
           eq(sandboxes.threadId, threadId),
           eq(sandboxes.userId, userId),
+          eq(sandboxes.kind, kind),
           eq(sandboxes.status, 'running'),
           sql`${sandboxes.expiresAt} > now()`,
         ),
@@ -52,8 +54,11 @@ export class SandboxRepository {
     return row;
   }
 
-  /** This person's running sandboxes, newest first. */
-  listRunningForUser(userId: string): Promise<SandboxListItem[]> {
+  /** This person's running sandboxes (or desktops), newest first. */
+  listRunningForUser(
+    userId: string,
+    kind: SandboxRow['kind'] = 'sandbox',
+  ): Promise<SandboxListItem[]> {
     return this.db
       .select({
         sandbox: sandboxes,
@@ -66,6 +71,7 @@ export class SandboxRepository {
       .where(
         and(
           eq(sandboxes.userId, userId),
+          eq(sandboxes.kind, kind),
           eq(sandboxes.status, 'running'),
           sql`${sandboxes.expiresAt} > now()`,
         ),
@@ -94,15 +100,17 @@ export class SandboxRepository {
     userId: string;
     threadId: string;
     agentId: string;
+    kind?: SandboxRow['kind'];
     provider: SandboxRow['provider'];
     externalId: string;
+    liveUrl?: string | null;
     expiresAt: Date;
   }): Promise<SandboxRow | undefined> {
     const [inserted] = await this.db
       .insert(sandboxes)
       .values(row)
       .onConflictDoNothing({
-        target: sandboxes.threadId,
+        target: [sandboxes.threadId, sandboxes.kind],
         where: sql`${sandboxes.status} = 'running'`,
       })
       .returning();
@@ -129,7 +137,7 @@ export class SandboxRepository {
       .returning();
   }
 
-  /** Every running sandbox of a chat (to stop before it's deleted). */
+  /** Every running sandbox and desktop of a chat (to stop before it's deleted). */
   allRunningForThread(threadId: string): Promise<SandboxRow[]> {
     return this.db
       .select()

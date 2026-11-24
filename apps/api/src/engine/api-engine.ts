@@ -82,7 +82,20 @@ export class ApiEngine implements Engine {
       system: request.system,
       messages: [
         ...(request.history ?? []),
-        {role: 'user', content: request.prompt},
+        request.promptImages?.length
+          ? {
+              role: 'user',
+              content: [
+                {type: 'text', text: request.prompt},
+                // A screen the model needs to see (a cloud desktop).
+                ...request.promptImages.map(image => ({
+                  type: 'image' as const,
+                  image: image.data,
+                  mediaType: image.mime,
+                })),
+              ],
+            }
+          : {role: 'user', content: request.prompt},
       ],
       abortSignal: request.signal,
       tools: request.tools,

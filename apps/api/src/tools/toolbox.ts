@@ -4,7 +4,7 @@ import {decideTool} from '@binary/shared';
 import type {FlexibleSchema, JSONValue, ToolSet} from 'ai';
 import {tool} from 'ai';
 
-import {forModel} from '../sandbox/images';
+import {toModelContent} from '../sandbox/images';
 
 /** A tool Binary can offer, built in or from an app. */
 export interface BinaryTool {
@@ -117,11 +117,14 @@ export class Toolbox {
           }
           return binaryTool.run(input, abortSignal);
         },
-        // Images (charts) are for the person: the model gets a note instead.
-        toModelOutput: ({output}) => ({
-          type: 'json',
-          value: (forModel(output) ?? null) as JSONValue,
-        }),
+        // Charts and screenshots are for the person: the model gets a note
+        // instead, except a desktop's screen, which it must see.
+        toModelOutput: ({output}) => {
+          const content = toModelContent(output);
+          return content.type === 'json'
+            ? {type: 'json', value: content.value as JSONValue}
+            : content;
+        },
       });
     }
     return set;

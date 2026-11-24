@@ -10,6 +10,10 @@ import type {Engine} from '../engine/engine';
 import {engineErrorMessage} from '../routes/stream-answer';
 import type {BrowserManager} from '../browser/manager';
 import {browserTools} from '../browser/tools';
+import type {DesktopManager} from '../desktop/manager';
+import {desktopTools} from '../desktop/tools';
+import type {RunnerAccess} from '../runners/access';
+import {runnerTools} from '../runners/tools';
 import {keepImages} from '../sandbox/images';
 import type {SandboxManager} from '../sandbox/manager';
 import {sandboxTools} from '../sandbox/tools';
@@ -43,6 +47,10 @@ export interface AnswerDeps {
   sandboxes: SandboxManager;
   /** Browsers; off (unavailable) without Chromium. */
   browsers: BrowserManager;
+  /** Cloud desktops; off (unavailable) without an E2B key. */
+  desktops: DesktopManager;
+  /** Your computers, through their Runners. */
+  runners: RunnerAccess;
 }
 
 export interface AnswerRequest {
@@ -53,6 +61,8 @@ export interface AnswerRequest {
   threadId: string;
   /** The newest message from the person. */
   prompt: string;
+  /** Images the model should see with it (a desktop's screen). */
+  promptImages?: Array<{mime: string; data: string}>;
   /** Earlier turns, oldest first. */
   history: ChatTurn[];
   /** Set for routine runs, which nobody watches live. */
@@ -85,8 +95,26 @@ export type AnswerOutcome =
  * tools and the same rules. The caller saves the result.
  */
 export async function generateAnswer(
-  {db, vault, builtInTools, composio, sandboxes, browsers}: AnswerDeps,
-  {engine, agent, userId, threadId, prompt, history, run}: AnswerRequest,
+  {
+    db,
+    vault,
+    builtInTools,
+    composio,
+    sandboxes,
+    browsers,
+    desktops,
+    runners,
+  }: AnswerDeps,
+  {
+    engine,
+    agent,
+    userId,
+    threadId,
+    prompt,
+    promptImages,
+    history,
+    run,
+  }: AnswerRequest,
   onProgress: (progress: AnswerProgress) => void = () => {},
 ): Promise<AnswerOutcome> {
   const mode = agent.approvalMode;
@@ -98,8 +126,13 @@ export async function generateAnswer(
   const hasSandbox = wantsSandbox && sandboxes.available;
   const wantsBrowser = agent.computers.includes('browser');
   const hasBrowser = wantsBrowser && browsers.available;
+  const wantsDesktop = agent.computers.includes('cloud_desktop');
+  const hasDesktop = wantsDesktop && desktops.available;
+  const runnerId = agent.computers.includes('runner') ? agent.runnerId : null;
+  // Claude Code and Codex bring their own tools; Binary's aren't offered.
+  const usesCli = agent.engine !== 'api';
   const tools =
-    mode === 'plan_only'
+    mode === 'plan_only' || usesCli
       ? NO_TOOLS
       : await loadUserToolbox(
           db,
@@ -109,6 +142,8 @@ export async function generateAnswer(
             ...builtInTools(),
             ...(hasSandbox ? sandboxTools(sandboxes, owner) : []),
             ...(hasBrowser ? browserTools(browsers, owner) : []),
+            ...(hasDesktop ? desktopTools(desktops, owner) : []),
+            ...(runnerId ? runnerTools(runners, {userId, runnerId}) : []),
           ],
           composio,
         );
@@ -125,6 +160,7 @@ export async function generateAnswer(
     // still finishes and is saved for when they come back.
     for await (const part of engine.stream({
       prompt,
+      promptImages,
       history,
       // Rebuilt from the saved profile every time, so edits apply at once.
       system: buildSystemPrompt(agent, {
@@ -132,6 +168,9 @@ export async function generateAnswer(
         run,
         sandbox: wantsSandbox ? (hasSandbox ? 'on' : 'off') : undefined,
         browser: wantsBrowser ? (hasBrowser ? 'on' : 'off') : undefined,
+        desktop: wantsDesktop ? (hasDesktop ? 'on' : 'off') : undefined,
+        runner: runnerId !== null && !usesCli,
+        cli: usesCli,
       }),
       tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,
@@ -139,6 +178,16 @@ export async function generateAnswer(
       if (part.type === 'text') {
         text += part.text;
         onProgress({type: 'delta', text: part.text});
+      } else if (part.type === 'tool-call' && part.risk) {
+        // A tool the engine ran itself (Claude Code's Read, Edit…), under
+        // the permission its approval mode maps to: shown, not asked.
+        report({
+          id: part.id,
+          name: part.name,
+          risk: part.risk,
+          input: part.input,
+          status: 'running',
+        });
       } else if (part.type === 'tool-call') {
         const found = tools.toolbox.find(part.name);
         const risk = tools.toolbox.riskOf(part.name);

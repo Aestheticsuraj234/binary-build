@@ -1,10 +1,12 @@
-import type {ChatTurn, ProviderId} from '@binary/shared';
+import type {ChatTurn, ProviderId, ToolRisk} from '@binary/shared';
 import type {ToolSet} from 'ai';
 
 /** What to ask a model. */
 export interface EngineRequest {
   /** The newest message from the person. */
   prompt: string;
+  /** Images that go with it, for the model to see (base64). */
+  promptImages?: Array<{mime: string; data: string}>;
   /** Earlier turns of the conversation, oldest first. */
   history?: ChatTurn[];
   /** Optional instructions that shape every answer. */
@@ -23,7 +25,18 @@ export interface EngineRequest {
 /** One piece of an answer, in the order the model produced it. */
 export type EnginePart =
   | {type: 'text'; text: string}
-  | {type: 'tool-call'; id: string; name: string; input: unknown}
+  | {
+      type: 'tool-call';
+      id: string;
+      name: string;
+      input: unknown;
+      /**
+       * Set for tools an engine runs itself (Claude Code's own tools): they
+       * already ran under the engine's permissions, so Binary only shows
+       * them, with this risk.
+       */
+      risk?: ToolRisk;
+    }
   | {type: 'tool-result'; id: string; name: string; output: unknown}
   | {type: 'tool-error'; id: string; name: string; error: string};
 

@@ -26,7 +26,11 @@ export type ToolSource =
   /** A cloud sandbox tool, run in the request's chat's sandbox. */
   | {kind: 'sandbox'; tool: string}
   /** A browser tool, run in the request's chat's browser. */
-  | {kind: 'browser'; tool: string};
+  | {kind: 'browser'; tool: string}
+  /** A tool on your computer, run by a Runner. */
+  | {kind: 'runner'; tool: string; runnerId: string}
+  /** A cloud desktop tool, run in the request's chat's desktop. */
+  | {kind: 'desktop'; tool: string};
 
 /**
  * A tool call waiting for the person's OK. It's a row, not a waiting

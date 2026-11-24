@@ -63,12 +63,14 @@ describe('hiring', () => {
       'approvalMode',
       'avatar',
       'computers',
+      'engine',
       'id',
       'instructions',
       'model',
       'name',
       'provider',
       'role',
+      'runnerId',
       'templateId',
     ]);
     expect(agent).toMatchObject({
@@ -77,6 +79,8 @@ describe('hiring', () => {
       // New characters start on Auto-approve reads, with no computer.
       approvalMode: 'auto_reads',
       computers: [],
+      engine: 'api',
+      runnerId: null,
     });
   });
 
