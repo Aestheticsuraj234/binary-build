@@ -196,7 +196,11 @@ export function ToolCallCard({
         <img
           key={image.id}
           src={toolImagePath(image.id)}
-          alt={`Chart from ${readableToolName(call.name)}`}
+          alt={
+            call.name.startsWith('browser_')
+              ? 'Screenshot of the page'
+              : `Chart from ${readableToolName(call.name)}`
+          }
           className="block w-full border-t bg-white"
           loading="lazy"
         />

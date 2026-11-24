@@ -8,6 +8,8 @@ import type {RunContext} from '../agents/system-prompt';
 import {buildSystemPrompt} from '../agents/system-prompt';
 import type {Engine} from '../engine/engine';
 import {engineErrorMessage} from '../routes/stream-answer';
+import type {BrowserManager} from '../browser/manager';
+import {browserTools} from '../browser/tools';
 import {keepImages} from '../sandbox/images';
 import type {SandboxManager} from '../sandbox/manager';
 import {sandboxTools} from '../sandbox/tools';
@@ -39,6 +41,8 @@ export interface AnswerDeps {
   composio: ComposioGateway | null;
   /** Cloud sandboxes; off (unavailable) without an E2B key. */
   sandboxes: SandboxManager;
+  /** Browsers; off (unavailable) without Chromium. */
+  browsers: BrowserManager;
 }
 
 export interface AnswerRequest {
@@ -81,7 +85,7 @@ export type AnswerOutcome =
  * tools and the same rules. The caller saves the result.
  */
 export async function generateAnswer(
-  {db, vault, builtInTools, composio, sandboxes}: AnswerDeps,
+  {db, vault, builtInTools, composio, sandboxes, browsers}: AnswerDeps,
   {engine, agent, userId, threadId, prompt, history, run}: AnswerRequest,
   onProgress: (progress: AnswerProgress) => void = () => {},
 ): Promise<AnswerOutcome> {
@@ -89,8 +93,11 @@ export async function generateAnswer(
   // Built-in tools plus every app that answers. An app that's down is
   // left out, and the answer carries on without it. Plan only uses no
   // tools, so it doesn't open any apps.
-  const wantsSandbox = agent.computer === 'cloud_sandbox';
+  const owner = {userId, threadId, agentId: agent.id};
+  const wantsSandbox = agent.computers.includes('cloud_sandbox');
   const hasSandbox = wantsSandbox && sandboxes.available;
+  const wantsBrowser = agent.computers.includes('browser');
+  const hasBrowser = wantsBrowser && browsers.available;
   const tools =
     mode === 'plan_only'
       ? NO_TOOLS
@@ -100,9 +107,8 @@ export async function generateAnswer(
           userId,
           [
             ...builtInTools(),
-            ...(hasSandbox
-              ? sandboxTools(sandboxes, {userId, threadId, agentId: agent.id})
-              : []),
+            ...(hasSandbox ? sandboxTools(sandboxes, owner) : []),
+            ...(hasBrowser ? browserTools(browsers, owner) : []),
           ],
           composio,
         );
@@ -125,6 +131,7 @@ export async function generateAnswer(
         unavailableApps: tools.unavailable,
         run,
         sandbox: wantsSandbox ? (hasSandbox ? 'on' : 'off') : undefined,
+        browser: wantsBrowser ? (hasBrowser ? 'on' : 'off') : undefined,
       }),
       tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,

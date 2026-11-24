@@ -1,3 +1,4 @@
+import {sql} from 'drizzle-orm';
 import {index, pgTable, text, timestamp, uuid} from 'drizzle-orm/pg-core';
 
 import {user} from './auth';
@@ -9,10 +10,11 @@ export const agentTemplates = pgTable('agent_templates', {
   name: text('name').notNull(),
   role: text('role').notNull(),
   instructions: text('instructions').notNull(),
-  /** The computer a character hired from it starts with. */
-  computer: text('computer', {enum: ['none', 'cloud_sandbox']})
+  /** The computers characters hired from it start with. */
+  computers: text('computers', {enum: ['cloud_sandbox', 'browser']})
+    .array()
     .notNull()
-    .default('none'),
+    .default(sql`'{}'::text[]`),
   createdAt: timestamp('created_at', {withTimezone: true})
     .defaultNow()
     .notNull(),
@@ -48,10 +50,11 @@ export const agents = pgTable(
     })
       .notNull()
       .default('auto_reads'),
-    /** Its computer: none, or a cloud sandbox per chat. */
-    computer: text('computer', {enum: ['none', 'cloud_sandbox']})
+    /** Its computers: a cloud sandbox and/or a browser, one per chat. */
+    computers: text('computers', {enum: ['cloud_sandbox', 'browser']})
+      .array()
       .notNull()
-      .default('none'),
+      .default(sql`'{}'::text[]`),
     /**
      * Set when the agent is fired. A fired agent leaves the crew, but its
      * chats can still be read, so the row stays.

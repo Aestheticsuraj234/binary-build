@@ -1,6 +1,6 @@
 import type {
   AppWithTools,
-  SandboxesOverview,
+  ComputersOverview,
   ToolsOverview,
 } from '@binary/shared';
 import {
@@ -10,6 +10,7 @@ import {
   fontWeight,
   radius,
   RISK_INFO,
+  BROWSER_SETUP_HINT,
   SANDBOX_SETUP_HINT,
   spacing,
   TOOL_RISKS,
@@ -212,35 +213,39 @@ function AppCard({
   );
 }
 
-/** Running cloud sandboxes with Stop, or how to turn them on. */
-function SandboxesSection() {
+/** Running sandboxes and browsers with Stop, and how to turn each on. */
+function ComputersSection() {
   const router = useRouter();
-  const overview = useApi<SandboxesOverview>('/api/sandboxes');
+  const overview = useApi<ComputersOverview>('/api/computers');
 
-  function confirmStop(id: string) {
-    Alert.alert('Stop this sandbox?', 'Its files go with it.', [
-      {text: 'Keep it', style: 'cancel'},
-      {
-        text: 'Stop',
-        style: 'destructive',
-        onPress: () => {
-          apiJson(`/api/sandboxes/${id}/stop`, {method: 'POST'})
-            .then(() => overview.reload())
-            .catch((caught: unknown) =>
-              Alert.alert(
-                "Couldn't stop it",
-                caught instanceof Error ? caught.message : String(caught),
-              ),
-            );
+  function confirmStop(id: string, isBrowser: boolean) {
+    Alert.alert(
+      isBrowser ? 'Close this browser?' : 'Stop this sandbox?',
+      isBrowser ? 'Its open page goes with it.' : 'Its files go with it.',
+      [
+        {text: 'Keep it', style: 'cancel'},
+        {
+          text: isBrowser ? 'Close' : 'Stop',
+          style: 'destructive',
+          onPress: () => {
+            apiJson(`/api/computers/${id}/stop`, {method: 'POST'})
+              .then(() => overview.reload())
+              .catch((caught: unknown) =>
+                Alert.alert(
+                  "Couldn't stop it",
+                  caught instanceof Error ? caught.message : String(caught),
+                ),
+              );
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   return (
     <>
       <Text accessibilityRole="header" style={styles.sectionTitle}>
-        Cloud sandboxes
+        Computers
       </Text>
       {!overview.data ? (
         overview.error ? (
@@ -248,39 +253,52 @@ function SandboxesSection() {
         ) : (
           <ActivityIndicator color={colors.accent} />
         )
-      ) : !overview.data.available ? (
-        <Text style={styles.muted}>{SANDBOX_SETUP_HINT}</Text>
       ) : (
         <View style={styles.card}>
           <Text style={styles.muted}>
-            One private Linux machine per chat. It stops after{' '}
-            {overview.data.idleMinutes} idle minutes, with its files.
+            {overview.data.sandbox.available
+              ? `Cloud sandbox: a private Linux machine per chat; stops after ${overview.data.sandbox.idleMinutes} idle minutes.`
+              : SANDBOX_SETUP_HINT}
           </Text>
-          {overview.data.sandboxes.length === 0 ? (
-            <Text style={styles.muted}>No sandbox is running.</Text>
+          <Text style={styles.muted}>
+            {overview.data.browser.available
+              ? `Browser: a headless Chromium per chat that only reaches public addresses; closes after ${overview.data.browser.idleMinutes} idle minutes.`
+              : BROWSER_SETUP_HINT}
+          </Text>
+          {overview.data.computers.length === 0 ? (
+            <Text style={styles.muted}>Nothing is running.</Text>
           ) : (
-            overview.data.sandboxes.map(sandbox => (
-              <View key={sandbox.id} style={styles.appHeader}>
-                <Pressable
-                  accessibilityRole="link"
-                  onPress={() => router.push(`/chats/${sandbox.threadId}`)}
-                  style={styles.appTitle}
-                >
-                  <Text style={styles.cardTitle}>
-                    {sandbox.threadTitle ?? 'Untitled chat'}
-                  </Text>
-                  <Text style={styles.muted}>{sandbox.agentName}</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Stop the sandbox for ${sandbox.threadTitle ?? 'this chat'}`}
-                  onPress={() => confirmStop(sandbox.id)}
-                  hitSlop={8}
-                >
-                  <Text style={styles.remove}>Stop</Text>
-                </Pressable>
-              </View>
-            ))
+            overview.data.computers.map(computer => {
+              const isBrowser = computer.kind === 'browser';
+              return (
+                <View key={computer.id} style={styles.appHeader}>
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => router.push(`/chats/${computer.threadId}`)}
+                    style={styles.appTitle}
+                  >
+                    <Text style={styles.cardTitle}>
+                      {isBrowser ? 'Browser' : 'Sandbox'} ·{' '}
+                      {computer.threadTitle ?? 'Untitled chat'}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.muted}>
+                      {computer.agentName}
+                      {computer.url ? ` · ${computer.url}` : ''}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isBrowser ? 'Close' : 'Stop'} it`}
+                    onPress={() => confirmStop(computer.id, isBrowser)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.remove}>
+                      {isBrowser ? 'Close' : 'Stop'}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })
           )}
         </View>
       )}
@@ -370,7 +388,7 @@ export default function AppsScreen() {
             ))}
           </>
         )}
-        <SandboxesSection />
+        <ComputersSection />
         <IntegrationsLink />
       </ScrollView>
     </KeyboardAvoidingView>

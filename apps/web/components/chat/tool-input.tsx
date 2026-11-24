@@ -7,6 +7,31 @@ interface CodeInput {
   command?: string;
   path?: string;
   content?: string;
+  url?: string;
+  ref?: number;
+  element?: string;
+  text?: string;
+  submit?: boolean;
+  key?: string;
+}
+
+/** A browser step in words: "Click [3] More information…". */
+function browserStep(name: string, value: CodeInput): string | null {
+  switch (name) {
+    case 'browser_open':
+      return value.url ? `Open ${value.url}` : null;
+    case 'browser_click':
+      return `Click [${value.ref}] ${value.element ?? ''}`.trim();
+    case 'browser_type':
+      return (
+        `Type "${value.text ?? ''}" into [${value.ref}] ${value.element ?? ''}`.trim() +
+        (value.submit ? ', then press Enter' : '')
+      );
+    case 'browser_press':
+      return value.key ? `Press ${value.key}` : null;
+    default:
+      return null;
+  }
 }
 
 function Pre({children}: {children: string}) {
@@ -49,6 +74,15 @@ export function ToolInput({name, input}: {name: string; input: unknown}) {
           Write <span className="font-mono">{value.path}</span>
         </p>
         <Pre>{value.content ?? ''}</Pre>
+      </div>
+    );
+  }
+  const step = browserStep(name, value);
+  if (step) {
+    return (
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">In the browser</p>
+        <Pre>{step}</Pre>
       </div>
     );
   }

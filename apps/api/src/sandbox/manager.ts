@@ -1,6 +1,6 @@
 import type {Database, SandboxListItem} from '@binary/db';
 import {SandboxRepository} from '@binary/db';
-import type {SandboxSummary} from '@binary/shared';
+import type {ComputerSummary} from '@binary/shared';
 import {SANDBOX_IDLE_MINUTES} from '@binary/shared';
 
 import type {SandboxHandle, SandboxProvider} from './provider';
@@ -19,9 +19,10 @@ export function toSandboxSummary({
   sandbox,
   agent,
   threadTitle,
-}: SandboxListItem): SandboxSummary {
+}: SandboxListItem): ComputerSummary {
   return {
     id: sandbox.id,
+    kind: 'cloud_sandbox',
     threadId: sandbox.threadId,
     threadTitle,
     agentName: agent.name,
@@ -29,6 +30,7 @@ export function toSandboxSummary({
     startedAt: sandbox.startedAt.toISOString(),
     lastUsedAt: sandbox.lastUsedAt.toISOString(),
     expiresAt: sandbox.expiresAt.toISOString(),
+    url: null,
   };
 }
 
@@ -112,17 +114,8 @@ export class SandboxManager {
     return winner;
   }
 
-  /** The chat's running sandbox, for the chat header. */
-  async summaryForThread(
-    threadId: string,
-    userId: string,
-  ): Promise<SandboxSummary | null> {
-    const items = await this.listForUser(userId);
-    return items.find(item => item.threadId === threadId) ?? null;
-  }
-
   /** This person's running sandboxes, newest first. */
-  async listForUser(userId: string): Promise<SandboxSummary[]> {
+  async listForUser(userId: string): Promise<ComputerSummary[]> {
     await this.rows.expireIdle(new Date(this.now()));
     return (await this.rows.listRunningForUser(userId)).map(toSandboxSummary);
   }

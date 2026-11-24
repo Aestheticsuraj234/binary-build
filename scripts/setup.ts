@@ -6,6 +6,7 @@
  * 3. Starts Postgres in Docker.
  * 4. Creates the test database and runs migrations on both databases.
  * 5. Seeds agent templates and a demo account (demo@binary.dev).
+ * 6. Downloads Chromium for characters with a browser (about 100 MB, once).
  *
  * Safe to run again: it keeps values you have already set.
  */
@@ -145,6 +146,9 @@ function main(): void {
 
   console.log('\nAdding agent templates and the demo account…');
   run('pnpm', ['db:seed']);
+
+  console.log('\nDownloading Chromium for browsers (once, about 100 MB)…');
+  run('pnpm', ['browsers:install']);
 
   console.log(
     '\nSetup complete. Next: `pnpm dev`, and `pnpm mobile` for the phone.',

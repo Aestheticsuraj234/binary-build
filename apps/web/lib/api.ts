@@ -6,7 +6,7 @@ import type {
   IntegrationsCatalog,
   ProviderKeyStatus,
   RoutineDetail,
-  SandboxesOverview,
+  ComputersOverview,
   RoutinesOverview,
   ThreadDetail,
   TodayOverview,
@@ -130,8 +130,14 @@ export const fetchPendingCount = cache(async (): Promise<number> => {
   return body?.pending ?? 0;
 });
 
-/** Whether cloud sandboxes are on, and which are running. */
-export const fetchSandboxes = cache(async (): Promise<SandboxesOverview> => {
-  const body = await apiGet<SandboxesOverview>('/api/sandboxes');
-  return body ?? {available: false, idleMinutes: 5, sandboxes: []};
+/** Which kinds of computer are on, and what's running. */
+export const fetchComputers = cache(async (): Promise<ComputersOverview> => {
+  const body = await apiGet<ComputersOverview>('/api/computers');
+  return (
+    body ?? {
+      sandbox: {available: false, idleMinutes: 5},
+      browser: {available: false, idleMinutes: 10, maxOpen: 5},
+      computers: [],
+    }
+  );
 });

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "auth:schema": "auth generate --config src/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes",
     "db:seed": "tsx scripts/seed.ts",
-    "trigger:dev": "trigger dev --env-file ../../.env"
+    "trigger:dev": "trigger dev --env-file ../../.env",
+    "browsers:install": "playwright install chromium"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.105",
@@ -29,6 +30,7 @@
     "better-auth": "^1.7.25",
     "hono": "^4.13.19",
     "ipaddr.js": "^2.5.0",
+    "playwright": "1.65.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -10,8 +10,8 @@ export interface TemplateInput {
   name: string;
   role: string;
   instructions: string;
-  /** The computer characters hired from it start with. */
-  computer?: 'none' | 'cloud_sandbox';
+  /** The computers characters hired from it start with. */
+  computers?: Array<'cloud_sandbox' | 'browser'>;
 }
 
 /** Queries for the `agent_templates` table, which everyone shares. */
@@ -45,7 +45,7 @@ export class AgentTemplateRepository {
           name: template.name,
           role: template.role,
           instructions: template.instructions,
-          computer: template.computer ?? 'none',
+          computers: template.computers ?? [],
         },
       })
       .returning();

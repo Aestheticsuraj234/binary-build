@@ -3,8 +3,8 @@ import type {
   ChatEvent,
   ChatMessage,
   Mood,
-  SandboxesOverview,
-  SandboxSummary,
+  ComputerSummary,
+  ComputersOverview,
   ThreadSummary,
   ToolCallRecord,
 } from '@binary/shared';
@@ -85,8 +85,8 @@ interface ChatProps {
   initialMessages: ChatMessage[];
   /** A fired agent's chat can be read but not continued. */
   isFired: boolean;
-  /** The chat's running cloud sandbox, if any. */
-  initialSandbox?: SandboxSummary | null;
+  /** The chat's running computers (sandbox, browser). */
+  initialComputers?: ComputerSummary[];
 }
 
 /**
@@ -100,46 +100,50 @@ export function Chat({
   thread,
   initialMessages,
   isFired,
-  initialSandbox = null,
+  initialComputers = [],
 }: ChatProps) {
   const router = useRouter();
   const character = characterOf(agent.avatar);
   const [threadId, setThreadId] = useState(thread?.id ?? null);
-  const [sandbox, setSandbox] = useState(initialSandbox);
+  const [running, setRunning] = useState(initialComputers);
 
-  /** Checks whether this chat's sandbox runs, after something may have started it. */
-  function refreshSandbox(id: string | null = threadId) {
-    if (agent.computer !== 'cloud_sandbox' || !id) {
+  /** Checks this chat's computers, after something may have started one. */
+  function refreshComputers(id: string | null = threadId) {
+    if (agent.computers.length === 0 || !id) {
       return;
     }
-    apiJson<SandboxesOverview>('/api/sandboxes')
-      .then(body =>
-        setSandbox(body.sandboxes.find(s => s.threadId === id) ?? null),
-      )
+    apiJson<ComputersOverview>('/api/computers')
+      .then(body => setRunning(body.computers.filter(c => c.threadId === id)))
       .catch(() => {});
   }
 
-  function confirmStopSandbox() {
-    if (!sandbox) {
-      return;
-    }
-    Alert.alert('Stop the sandbox?', 'Its files go with it.', [
-      {text: 'Keep it', style: 'cancel'},
-      {
-        text: 'Stop',
-        style: 'destructive',
-        onPress: () => {
-          apiJson(`/api/sandboxes/${sandbox.id}/stop`, {method: 'POST'})
-            .then(() => setSandbox(null))
-            .catch((error: unknown) =>
-              Alert.alert(
-                "Couldn't stop it",
-                error instanceof Error ? error.message : String(error),
-              ),
-            );
+  function confirmStop(computer: ComputerSummary) {
+    const isBrowser = computer.kind === 'browser';
+    Alert.alert(
+      isBrowser ? 'Close the browser?' : 'Stop the sandbox?',
+      isBrowser ? 'Its open page goes with it.' : 'Its files go with it.',
+      [
+        {text: 'Keep it', style: 'cancel'},
+        {
+          text: isBrowser ? 'Close' : 'Stop',
+          style: 'destructive',
+          onPress: () => {
+            apiJson(`/api/computers/${computer.id}/stop`, {method: 'POST'})
+              .then(() =>
+                setRunning(current =>
+                  current.filter(c => c.id !== computer.id),
+                ),
+              )
+              .catch((error: unknown) =>
+                Alert.alert(
+                  "Couldn't stop it",
+                  error instanceof Error ? error.message : String(error),
+                ),
+              );
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState('');
@@ -254,7 +258,7 @@ export function Chat({
               ...event.message,
               isStreaming: false,
             }));
-            refreshSandbox(id);
+            refreshComputers(id);
           }
         }
       }
@@ -339,7 +343,7 @@ export function Chat({
     });
     setMood('happy');
     happyTimer.current = setTimeout(() => setMood('idle'), 2500);
-    refreshSandbox();
+    refreshComputers();
     return undefined;
   }
 
@@ -449,20 +453,31 @@ export function Chat({
         </View>
       </View>
 
-      {sandbox && (
-        <View style={styles.sandbox}>
-          <View style={styles.sandboxDot} />
-          <Text style={styles.sandboxText}>Sandbox on</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Stop the sandbox"
-            onPress={confirmStopSandbox}
-            hitSlop={8}
-          >
-            <Text style={styles.sandboxStop}>Stop</Text>
-          </Pressable>
-        </View>
-      )}
+      {running.map(computer => {
+        const isBrowser = computer.kind === 'browser';
+        return (
+          <View key={computer.id} style={styles.sandbox}>
+            <View style={styles.sandboxDot} />
+            <Text numberOfLines={1} style={styles.sandboxText}>
+              {isBrowser
+                ? `Browser open${computer.url ? ` · ${computer.url}` : ''}`
+                : 'Sandbox on'}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                isBrowser ? 'Close the browser' : 'Stop the sandbox'
+              }
+              onPress={() => confirmStop(computer)}
+              hitSlop={8}
+            >
+              <Text style={styles.sandboxStop}>
+                {isBrowser ? 'Close' : 'Stop'}
+              </Text>
+            </Pressable>
+          </View>
+        );
+      })}
       <ScrollView
         ref={scrollRef}
         style={styles.messages}

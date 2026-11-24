@@ -4,6 +4,7 @@ import type {
   AgentInput,
   AgentSummary,
   ApprovalMode,
+  ComputerKind,
   FieldErrors,
   Mood,
   ProviderId,
@@ -13,8 +14,9 @@ import {
   APPROVAL_MODE_INFO,
   APPROVAL_MODES,
   CAST,
+  BROWSER_SETUP_HINT,
   COMPUTER_INFO,
-  COMPUTERS,
+  COMPUTER_KINDS,
   SANDBOX_SETUP_HINT,
   characterOf,
   getProvider,
@@ -43,8 +45,8 @@ interface AgentFormProps {
   initial: AgentFormValues;
   /** Providers the person has a key for; the only ones they can pick. */
   connectedProviders: ProviderId[];
-  /** False without an E2B key: cloud sandboxes can't be chosen. */
-  sandboxesAvailable: boolean;
+  /** Which kinds of computer this Binary can run (E2B key, Chromium). */
+  available: Record<ComputerKind, boolean>;
   agentId?: string;
   templateId?: string | null;
 }
@@ -87,7 +89,7 @@ export function AgentForm({
   mode,
   initial,
   connectedProviders,
-  sandboxesAvailable,
+  available,
   agentId,
   templateId,
 }: AgentFormProps) {
@@ -359,51 +361,62 @@ export function AgentForm({
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 text-sm font-medium">Computer</legend>
+          <legend className="mb-1 text-sm font-medium">Computers</legend>
           <p className="mb-3 text-sm text-muted-foreground">
-            Somewhere {displayName} can run code and work with files.
+            Where {displayName} can run code or use the web. Pick either, both
+            or none.
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {COMPUTERS.map(computer => {
-              const isOff =
-                computer === 'cloud_sandbox' &&
-                !sandboxesAvailable &&
-                values.computer !== computer;
+            {COMPUTER_KINDS.map(kind => {
+              const isChecked = values.computers.includes(kind);
+              // Off on this Binary: can't be added, but can be taken away.
+              const isOff = !available[kind] && !isChecked;
               return (
                 <label
-                  key={computer}
+                  key={kind}
                   className={cn(
                     'flex flex-col gap-1 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50',
                     isOff ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
-                    values.computer === computer
+                    isChecked
                       ? 'border-primary bg-secondary'
                       : 'border-input hover:bg-secondary/60',
                   )}
                 >
                   <input
-                    type="radio"
-                    name="computer"
-                    value={computer}
-                    checked={values.computer === computer}
+                    type="checkbox"
+                    name="computers"
+                    value={kind}
+                    checked={isChecked}
                     disabled={isOff}
-                    onChange={() => set('computer', computer)}
+                    onChange={() =>
+                      set(
+                        'computers',
+                        isChecked
+                          ? values.computers.filter(other => other !== kind)
+                          : COMPUTER_KINDS.filter(
+                              other =>
+                                other === kind ||
+                                values.computers.includes(other),
+                            ),
+                      )
+                    }
                     className="sr-only"
                   />
                   <span className="font-medium">
-                    {COMPUTER_INFO[computer].label}
+                    {COMPUTER_INFO[kind].label}
+                    {isChecked && ' ✓'}
                   </span>
                   <span className="text-muted-foreground">
-                    {COMPUTER_INFO[computer].description}
+                    {available[kind]
+                      ? COMPUTER_INFO[kind].description
+                      : kind === 'cloud_sandbox'
+                        ? SANDBOX_SETUP_HINT
+                        : BROWSER_SETUP_HINT}
                   </span>
                 </label>
               );
             })}
           </div>
-          {!sandboxesAvailable && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {SANDBOX_SETUP_HINT}
-            </p>
-          )}
         </fieldset>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

@@ -1,6 +1,7 @@
 import type {
   AgentInput,
   AgentSummary,
+  ComputerKind,
   FieldErrors,
   Mood,
   ProviderId,
@@ -10,8 +11,9 @@ import {
   APPROVAL_MODE_INFO,
   APPROVAL_MODES,
   CAST,
+  BROWSER_SETUP_HINT,
   COMPUTER_INFO,
-  COMPUTERS,
+  COMPUTER_KINDS,
   SANDBOX_SETUP_HINT,
   characterOf,
   colors,
@@ -48,8 +50,8 @@ interface AgentFormProps {
   initial: AgentFormValues;
   /** Providers the person has a key for; the only ones they can pick. */
   connectedProviders: ProviderId[];
-  /** False without an E2B key on the server. */
-  sandboxesAvailable: boolean;
+  /** Which kinds of computer the server can run (E2B key, Chromium). */
+  available: Record<ComputerKind, boolean>;
   agentId?: string;
   templateId?: string | null;
 }
@@ -109,7 +111,7 @@ export function AgentForm({
   mode,
   initial,
   connectedProviders,
-  sandboxesAvailable,
+  available,
   agentId,
   templateId,
 }: AgentFormProps) {
@@ -304,19 +306,50 @@ export function AgentForm({
           {APPROVAL_MODE_INFO[values.approvalMode].description}
         </Text>
 
-        <ChoiceRow
-          label="Computer"
-          options={COMPUTERS}
-          value={values.computer}
-          onChange={computer => set('computer', computer)}
-          describe={computer => COMPUTER_INFO[computer].label}
-          error={errors.computer}
-        />
-        <Text style={styles.modeHint}>
-          {values.computer === 'cloud_sandbox' && !sandboxesAvailable
-            ? SANDBOX_SETUP_HINT
-            : COMPUTER_INFO[values.computer].description}
-        </Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Computers</Text>
+          {COMPUTER_KINDS.map(kind => {
+            const isOn = values.computers.includes(kind);
+            // Off on the server: can't be added, but can be taken away.
+            const isOff = !available[kind] && !isOn;
+            return (
+              <Pressable
+                key={kind}
+                accessibilityRole="checkbox"
+                accessibilityState={{checked: isOn, disabled: isOff}}
+                disabled={isOff}
+                onPress={() =>
+                  set(
+                    'computers',
+                    isOn
+                      ? values.computers.filter(other => other !== kind)
+                      : COMPUTER_KINDS.filter(
+                          other =>
+                            other === kind || values.computers.includes(other),
+                        ),
+                  )
+                }
+                style={[
+                  styles.computer,
+                  isOn && styles.choiceSelected,
+                  isOff && styles.computerOff,
+                ]}
+              >
+                <Text style={styles.computerTitle}>
+                  {isOn ? '☑︎ ' : '☐ '}
+                  {COMPUTER_INFO[kind].label}
+                </Text>
+                <Text style={styles.modeHint}>
+                  {available[kind]
+                    ? COMPUTER_INFO[kind].description
+                    : kind === 'cloud_sandbox'
+                      ? SANDBOX_SETUP_HINT
+                      : BROWSER_SETUP_HINT}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         {formError && <Text style={styles.formError}>{formError}</Text>}
 
@@ -389,6 +422,20 @@ const styles = StyleSheet.create({
   castName: {color: colors.textMuted, fontSize: fontSize.xs},
   multiline: {height: 110, paddingTop: spacing.md, textAlignVertical: 'top'},
   choices: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+  computer: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  computerOff: {opacity: 0.5},
+  computerTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
   modeHint: {
     color: colors.textMuted,
     fontSize: fontSize.sm,

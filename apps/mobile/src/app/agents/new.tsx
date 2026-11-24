@@ -1,5 +1,5 @@
 import type {AgentTemplateSummary, ProviderKeyStatus} from '@binary/shared';
-import type {SandboxesOverview} from '@binary/shared';
+import type {ComputersOverview} from '@binary/shared';
 import {
   characterOf,
   colors,
@@ -17,7 +17,7 @@ import {useApi} from '@/hooks/use-api';
 /** Hire a character, starting from a template (?template=…) or from scratch. */
 export default function NewAgentScreen() {
   const {template: slug} = useLocalSearchParams<{template?: string}>();
-  const sandboxes = useApi<SandboxesOverview>('/api/sandboxes');
+  const computers = useApi<ComputersOverview>('/api/computers');
   const templates = useApi<{templates: AgentTemplateSummary[]}>(
     '/api/agent-templates',
   );
@@ -62,7 +62,10 @@ export default function NewAgentScreen() {
       <AgentForm
         mode="hire"
         connectedProviders={providers}
-        sandboxesAvailable={sandboxes.data?.available ?? false}
+        available={{
+          cloud_sandbox: computers.data?.sandbox.available ?? false,
+          browser: computers.data?.browser.available ?? false,
+        }}
         templateId={template?.id ?? null}
         initial={{
           name: character.name,
@@ -72,7 +75,7 @@ export default function NewAgentScreen() {
           provider,
           model: getProvider(provider).defaultModel,
           approvalMode: DEFAULT_APPROVAL_MODE,
-          computer: template?.computer ?? 'none',
+          computers: template?.computers ?? [],
         }}
       />
     </>

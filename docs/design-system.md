@@ -184,20 +184,22 @@ Every signed-in page lives in `apps/web/app/(app)/` and shares one layout:
   itself with Tailwind classes. `app/globals.css` points Tailwind at its files
   with `@source`; if that path is wrong, answers lose their styles silently.
 
-## Cloud sandboxes
+## Computers (sandboxes and browsers)
 
-- Hiring and editing have **Computer**: None or Cloud sandbox, cards on the
-  web and pills on the phone. Without an E2B key, Cloud sandbox is greyed
-  out with how to turn it on.
+- Hiring and editing have **Computers**: Cloud sandbox and Browser, as
+  checkbox cards (web) or toggles (phone); pick either, both or none. A
+  kind that's off on this Binary is greyed out with how to turn it on.
+- Browser steps read as words, not JSON: "Open https://…", "Click [3] More
+  information…", "Type "mugs" into [2] Search, then press Enter". Each
+  step's screenshot sits under its card, like a chart.
+- The chat header shows a pill per running computer, **Sandbox on** or
+  **Browser open**, each with a square Stop/Close button. Apps & tools has
+  one **Computers** list with both kinds.
 - A request to run code **starts open** and shows the code itself (a
   Python, JavaScript or Shell label over a mono block), not JSON, in the
   chat and in Today.
 - **Charts** sit under their tool card, full width on white, so axes stay
   readable on the dark theme.
-- While a chat's sandbox runs, the stage's top row shows a **Sandbox on**
-  pill (lime dot) with a square Stop button; the phone shows the same
-  above the messages. Apps & tools lists running sandboxes, each with
-  **Stop**.
 
 ## Today
 

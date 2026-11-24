@@ -6,10 +6,13 @@ import type {MadeImage} from './provider';
 
 /** The key a tool's output uses for images meant only for the person. */
 export const IMAGES_KEY = '__images';
+/** What the model is told instead of the images (default: a chart note). */
+export const IMAGES_NOTE_KEY = '__imagesNote';
 
 /** A tool output with images the person should see, kept apart. */
 export interface WithImages {
   [IMAGES_KEY]?: MadeImage[];
+  [IMAGES_NOTE_KEY]?: string;
 }
 
 function imagesOf(output: unknown): MadeImage[] {
@@ -30,8 +33,14 @@ export function forModel(output: unknown): unknown {
   if (images.length === 0) {
     return output;
   }
-  const {[IMAGES_KEY]: _images, ...rest} = output as WithImages &
-    Record<string, unknown>;
+  const {
+    [IMAGES_KEY]: _images,
+    [IMAGES_NOTE_KEY]: note,
+    ...rest
+  } = output as WithImages & Record<string, unknown>;
+  if (note) {
+    return {...rest, images: note};
+  }
   return {
     ...rest,
     charts:

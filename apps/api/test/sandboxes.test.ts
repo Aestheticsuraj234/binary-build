@@ -3,7 +3,7 @@ import type {
   AgentSummary,
   ApprovalDecided,
   ChatEvent,
-  SandboxesOverview,
+  ComputersOverview,
   ThreadDetail,
   ThreadSummary,
   ToolCallRecord,
@@ -59,7 +59,7 @@ async function hire(
       avatar: 'bolt',
       provider: 'anthropic',
       model: 'claude-sonnet-5-5',
-      computer: 'cloud_sandbox',
+      computers: ['cloud_sandbox'],
     },
     cookie: as,
   });
@@ -105,9 +105,9 @@ async function getThread(id: string): Promise<ThreadDetail> {
   return (await response.json()) as ThreadDetail;
 }
 
-async function overview(app = withE2B.app): Promise<SandboxesOverview> {
-  const response = await callApi(app, '/api/sandboxes', {cookie});
-  return (await response.json()) as SandboxesOverview;
+async function overview(app = withE2B.app): Promise<ComputersOverview> {
+  const response = await callApi(app, '/api/computers', {cookie});
+  return (await response.json()) as ComputersOverview;
 }
 
 /** Bolt asks to run `code` in a new chat; returns the chat and request. */
@@ -164,7 +164,7 @@ describe('running code', () => {
         avatar: 'bolt',
         provider: 'anthropic',
         model: 'claude-sonnet-5-5',
-        computer: 'cloud_sandbox',
+        computers: ['cloud_sandbox'],
         approvalMode: 'accept_edits',
       },
       cookie,
@@ -216,7 +216,9 @@ describe('running code', () => {
 
     // The chat shows its sandbox is on.
     const thread = await getThread(threadId);
-    expect(thread.sandbox).toMatchObject({threadId, agentName: 'Bolt'});
+    expect(thread.computers).toMatchObject([
+      {kind: 'cloud_sandbox', threadId, agentName: 'Bolt'},
+    ]);
     expect(thread.messages[1]!.toolCalls[0]!.images).toHaveLength(1);
   });
 
@@ -301,7 +303,7 @@ describe('stopping', () => {
     const {threadId, call} = await askToRun('print(1)');
     scripts.push([{text: 'Done.'}]);
     await approve(call.approvalId!);
-    const [sandbox] = (await overview()).sandboxes;
+    const [sandbox] = (await overview()).computers;
     return {threadId, sandbox: sandbox!};
   }
 
@@ -311,14 +313,14 @@ describe('stopping', () => {
 
     const response = await callApi(
       withE2B.app,
-      `/api/sandboxes/${sandbox.id}/stop`,
+      `/api/computers/${sandbox.id}/stop`,
       {method: 'POST', cookie},
     );
 
     expect(response.status).toBe(200);
     expect(provider.killed).toEqual(['sbx_1']);
-    expect((await overview()).sandboxes).toEqual([]);
-    expect((await getThread(threadId)).sandbox).toBeNull();
+    expect((await overview()).computers).toEqual([]);
+    expect((await getThread(threadId)).computers).toEqual([]);
   });
 
   it('deleting a chat stops its sandbox', async () => {
@@ -330,7 +332,7 @@ describe('stopping', () => {
     });
 
     expect(provider.killed).toEqual(['sbx_1']);
-    expect((await overview()).sandboxes).toEqual([]);
+    expect((await overview()).computers).toEqual([]);
   });
 
   it('an idle sandbox is gone, and the next run starts a fresh one', async () => {
@@ -340,7 +342,7 @@ describe('stopping', () => {
       .update(sandboxes)
       .set({expiresAt: sql`now() - interval '1 minute'`});
     provider.machines.get('sbx_1')!.alive = false;
-    expect((await overview()).sandboxes).toEqual([]);
+    expect((await overview()).computers).toEqual([]);
 
     scripts.push([
       {toolCalls: [{name: 'run_code', input: {code: 'print(2)'}}]},
@@ -359,7 +361,7 @@ describe('stopping', () => {
 
     const stop = await callApi(
       withE2B.app,
-      `/api/sandboxes/${sandbox.id}/stop`,
+      `/api/computers/${sandbox.id}/stop`,
       {method: 'POST', cookie: other},
     );
     expect(stop.status).toBe(404);
@@ -390,7 +392,7 @@ describe('without an E2B key', () => {
       cookie,
     });
     const agent = await hire(withoutE2B.app);
-    expect(agent.computer).toBe('cloud_sandbox');
+    expect(agent.computers).toEqual(['cloud_sandbox']);
     const threadId = await newChat(agent.id, withoutE2B.app);
     scripts.push([{text: "I can't run code here."}]);
 
@@ -399,10 +401,10 @@ describe('without an E2B key', () => {
     const call = models.at(-1)!.doStreamCalls[0]!;
     expect(call.tools ?? []).toEqual([]);
     expect(JSON.stringify(call.prompt)).toContain("there's no E2B key");
-    expect(await overview(withoutE2B.app)).toEqual({
-      available: false,
-      idleMinutes: 5,
-      sandboxes: [],
+    expect(await overview(withoutE2B.app)).toMatchObject({
+      sandbox: {available: false, idleMinutes: 5},
+      browser: {available: false},
+      computers: [],
     });
   });
 });

@@ -12,7 +12,8 @@ a cartoon character, on the web and the phone (chapter 4), and routines that
 run on a schedule, from a webhook or on demand, as durable jobs on
 Trigger.dev (chapter 7), and approvals: risky tools ask for your OK in the
 chat and in a Today inbox (chapter 8), and cloud sandboxes from E2B where
-characters run code and draw charts (chapter 9).
+characters run code and draw charts (chapter 9), and a headless browser
+that opens public pages and asks before clicking (chapter 10).
 
 ## What's inside
 
@@ -64,18 +65,19 @@ The phone talks to the API at your computer's Wi-Fi address, which
 
 ## Everyday commands
 
-| Command            | What it does                                 |
-| ------------------ | -------------------------------------------- |
-| `pnpm dev`         | Start Postgres, the API and the web app.     |
-| `pnpm mobile`      | Start the Expo dev server for the phone.     |
-| `pnpm trigger:dev` | Run the Trigger.dev worker (routines).       |
-| `pnpm lint`        | ESLint, then a Prettier formatting check.    |
-| `pnpm format`      | Fix formatting with Prettier.                |
-| `pnpm check-types` | TypeScript in every package.                 |
-| `pnpm test`        | Unit tests, plus API tests against Postgres. |
-| `pnpm build`       | Production build of the web app.             |
-| `pnpm db:migrate`  | Apply database migrations.                   |
-| `pnpm db:down`     | Stop Postgres (your data is kept).           |
+| Command                 | What it does                                 |
+| ----------------------- | -------------------------------------------- |
+| `pnpm dev`              | Start Postgres, the API and the web app.     |
+| `pnpm mobile`           | Start the Expo dev server for the phone.     |
+| `pnpm trigger:dev`      | Run the Trigger.dev worker (routines).       |
+| `pnpm browsers:install` | Download Chromium for browsers (once).       |
+| `pnpm lint`             | ESLint, then a Prettier formatting check.    |
+| `pnpm format`           | Fix formatting with Prettier.                |
+| `pnpm check-types`      | TypeScript in every package.                 |
+| `pnpm test`             | Unit tests, plus API tests against Postgres. |
+| `pnpm build`            | Production build of the web app.             |
+| `pnpm db:migrate`       | Apply database migrations.                   |
+| `pnpm db:down`          | Stop Postgres (your data is kept).           |
 
 ### Changing the database
 
@@ -250,9 +252,47 @@ approvals existed got it too, so what they already did doesn't change.
 - Requests don't expire yet. Approving waits for the tool and the
   follow-up, so a slow tool makes the button slow.
 
+## How browsers work
+
+A character's **computers** (Edit → Computers) can include a **browser**:
+a headless Chromium from [Playwright](https://playwright.dev), one isolated
+context per chat, running inside the API. A character can have a browser,
+a cloud sandbox, both or neither. The Research Assistant template comes
+with a browser.
+
+`pnpm run setup` downloads Chromium (about 100 MB, once); on an older
+checkout run `pnpm browsers:install` and restart `pnpm dev`. Then ask a
+browser character: _"Open example.com and tell me what it says."_
+
+- **Looking is free, acting asks.** `browser_open`, `browser_read`,
+  `browser_scroll` and `browser_back` are `read` tools; `browser_click`,
+  `browser_type` and `browser_press` are `computer` tools, so they ask
+  first (`apps/api/src/browser/tools.ts`).
+- **No CSS selectors.** Each step gives the model the page's text and a
+  numbered list of what it can act on, like `[3] link "More information…"`.
+  It acts by number and label; if the element at that number isn't what it
+  named (the page changed), nothing is done.
+- **Screenshots are for you.** Every step's screenshot is saved like a chart
+  and shown under the tool card; the model reads the text instead.
+- **Only public addresses** (`apps/api/src/browser/proxy.ts`). Chromium sends
+  every request (pages, scripts, images, redirects, WebSockets) through a
+  proxy on `127.0.0.1` that looks each host up itself, refuses anything
+  that isn't public (this machine, your network, cloud metadata) and
+  connects to exactly the address it checked. Playwright stops Chromium's
+  shortcut around proxies for localhost, WebRTC can't skip the proxy,
+  service workers and downloads are off, and only `http`/`https` open.
+- **Lifecycle** (`apps/api/src/browser/manager.ts`): a browser opens on first
+  use, closes after **10 idle minutes**, with **Close**, or when its chat is
+  deleted. At most **5** are open; opening another closes the least recently
+  used. Browsers live in the API's memory, so restarting it closes them,
+  and each starts signed out.
+- **One place for computers.** `GET /api/computers` lists sandboxes and
+  browsers together, and `POST /api/computers/:id/stop` stops either. The
+  chat header and Apps & tools use it.
+
 ## How cloud sandboxes work
 
-A character's **computer** (Edit → Computer) can be a **cloud sandbox**: a
+A character's **computers** (Edit → Computers) can include a **cloud sandbox**: a
 private Linux machine from [E2B](https://e2b.dev), one per chat, with
 Python, Node, a Jupyter kernel and internet access. The Coding Agent
 template comes with one.
@@ -271,7 +311,7 @@ template comes with one.
 - **Lifecycle** (`apps/api/src/sandbox/manager.ts`): a chat's sandbox starts
   on the first approved run, is reused while it lives (so a file written in
   one message can be read in the next), and stops after **5 idle minutes**,
-  with **Stop** (the chat header, or Apps & tools), or when the chat is
+  with **Stop** (the chat header, or Computers on Apps & tools), or when the chat is
   deleted. The next run after that starts a fresh one, without the old
   files. A unique index keeps it to one sandbox per chat, even when two
   runs start at once.
