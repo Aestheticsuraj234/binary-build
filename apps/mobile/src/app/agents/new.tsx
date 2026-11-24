@@ -1,5 +1,11 @@
 import type {AgentTemplateSummary, ProviderKeyStatus} from '@binary/shared';
-import {characterOf, colors, getProvider, spacing} from '@binary/shared';
+import {
+  characterOf,
+  colors,
+  DEFAULT_APPROVAL_MODE,
+  getProvider,
+  spacing,
+} from '@binary/shared';
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 
@@ -62,6 +68,7 @@ export default function NewAgentScreen() {
           avatar: character.id,
           provider,
           model: getProvider(provider).defaultModel,
+          approvalMode: DEFAULT_APPROVAL_MODE,
         }}
       />
     </>

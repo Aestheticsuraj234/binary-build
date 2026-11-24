@@ -1,3 +1,4 @@
+import type {ApprovalMode} from './approvals';
 import type {ProviderId} from './providers';
 import type {ToolCallRecord} from './tools';
 
@@ -24,10 +25,13 @@ export type PlaygroundEvent =
   | {type: 'error'; message: string}
   | {type: 'done'};
 
-/** One saved message in a chat. */
+/**
+ * One saved message in a chat. A `note` is from Binary, not a person or
+ * the character: "You approved shop refund order."
+ */
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'note';
   content: string;
   /** Tools the agent used while answering, in order. */
   toolCalls: ToolCallRecord[];
@@ -83,6 +87,7 @@ export const API_ERROR_CODES = {
   appUnreachable: 'APP_UNREACHABLE',
   tooLarge: 'TOO_LARGE',
   jobsUnavailable: 'JOBS_UNAVAILABLE',
+  alreadyDecided: 'ALREADY_DECIDED',
 } as const;
 
 export type ApiErrorCode =
@@ -102,6 +107,8 @@ export interface AgentSummary {
   provider: ProviderId | null;
   model: string | null;
   templateId: string | null;
+  /** How freely it may use tools. */
+  approvalMode: ApprovalMode;
 }
 
 /** A ready-made starting point for a new agent. */

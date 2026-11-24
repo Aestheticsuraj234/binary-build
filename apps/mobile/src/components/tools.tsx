@@ -61,6 +61,8 @@ const VERBS: Record<ToolCallRecord['status'], string> = {
   running: 'Using',
   done: 'Used',
   failed: 'Tried',
+  waiting: 'Wants to use',
+  rejected: 'Rejected',
   blocked: 'Blocked',
 };
 
@@ -68,8 +70,74 @@ const STATUS_MARKS: Record<ToolCallRecord['status'], string> = {
   running: '',
   done: '✓',
   failed: '✕',
+  waiting: '?',
+  rejected: '⊘',
   blocked: '⛔︎',
 };
+
+/** Approve and Reject. `onDecide` resolves to an error to show, or undefined. */
+export function DecisionButtons({
+  onDecide,
+  label = 'Needs your OK',
+}: {
+  onDecide: (decision: 'approve' | 'reject') => Promise<string | undefined>;
+  label?: string;
+}) {
+  const [busy, setBusy] = useState<'approve' | 'reject'>();
+  const [error, setError] = useState<string>();
+
+  async function decide(decision: 'approve' | 'reject') {
+    setBusy(decision);
+    setError(undefined);
+    setError(await onDecide(decision));
+    setBusy(undefined);
+  }
+
+  return (
+    <View style={styles.decision}>
+      <Text style={styles.decisionLabel}>{label}</Text>
+      <View style={styles.decisionButtons}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: busy !== undefined,
+            busy: busy === 'approve',
+          }}
+          disabled={busy !== undefined}
+          onPress={() => void decide('approve')}
+          style={({pressed}) => [styles.approve, pressed && styles.pressed]}
+        >
+          {busy === 'approve' ? (
+            <ActivityIndicator size="small" color={colors.text} />
+          ) : (
+            <Text style={styles.approveText}>✓ Approve</Text>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: busy !== undefined,
+            busy: busy === 'reject',
+          }}
+          disabled={busy !== undefined}
+          onPress={() => void decide('reject')}
+          style={({pressed}) => [styles.reject, pressed && styles.pressed]}
+        >
+          {busy === 'reject' ? (
+            <ActivityIndicator size="small" color={colors.textMuted} />
+          ) : (
+            <Text style={styles.rejectText}>✕ Reject</Text>
+          )}
+        </Pressable>
+      </View>
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.decisionError}>
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
 
 function asJson(value: unknown): string {
   const text =
@@ -94,16 +162,27 @@ function Block({label, value}: {label: string; value: unknown}) {
 
 /**
  * One tool call inside an answer. Tap it to see the input and the result.
- * Blocked and failed calls start open, so the reason is visible.
+ * Failed calls start open, so the reason is visible. A call waiting for an
+ * OK shows Approve and Reject once its answer is saved (`onDecide`).
  */
-export function ToolCallCard({call}: {call: ToolCallRecord}) {
+export function ToolCallCard({
+  call,
+  onDecide,
+}: {
+  call: ToolCallRecord;
+  onDecide?: (decision: 'approve' | 'reject') => Promise<string | undefined>;
+}) {
+  const isWaiting = call.status === 'waiting';
   const [isOpen, setIsOpen] = useState(
     call.status === 'blocked' || call.status === 'failed',
   );
   const name = call.name.replace(/[_-]+/g, ' ');
   return (
     <View
-      style={[styles.card, call.status === 'blocked' && styles.cardBlocked]}
+      style={[
+        styles.card,
+        (call.status === 'blocked' || isWaiting) && styles.cardBlocked,
+      ]}
     >
       <Pressable
         accessibilityRole="button"
@@ -125,7 +204,9 @@ export function ToolCallCard({call}: {call: ToolCallRecord}) {
               styles.mark,
               call.status === 'done' && {color: colors.accent},
               call.status === 'failed' && {color: colors.danger},
-              call.status === 'blocked' && {color: colors.warning},
+              (call.status === 'blocked' || isWaiting) && {
+                color: colors.warning,
+              },
             ]}
           >
             {STATUS_MARKS[call.status]}
@@ -135,7 +216,7 @@ export function ToolCallCard({call}: {call: ToolCallRecord}) {
       </Pressable>
       {isOpen && (
         <View style={styles.details}>
-          {call.error ? (
+          {call.error && !isWaiting ? (
             <Text
               style={[
                 styles.note,
@@ -153,11 +234,53 @@ export function ToolCallCard({call}: {call: ToolCallRecord}) {
           )}
         </View>
       )}
+      {isWaiting && (
+        <View style={styles.waiting}>
+          {onDecide ? (
+            <DecisionButtons onDecide={onDecide} />
+          ) : (
+            <Text style={styles.decisionLabel}>Needs your OK</Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  waiting: {
+    borderTopWidth: 1,
+    borderTopColor: colors.warning,
+    padding: spacing.md,
+  },
+  decision: {gap: spacing.sm},
+  decisionLabel: {color: colors.warning, fontSize: fontSize.sm},
+  decisionButtons: {flexDirection: 'row', gap: spacing.sm},
+  approve: {
+    flex: 1,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceRaised,
+  },
+  approveText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  reject: {
+    flex: 1,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+  },
+  rejectText: {color: colors.textMuted, fontSize: fontSize.sm},
+  pressed: {opacity: 0.7},
+  decisionError: {color: colors.danger, fontSize: fontSize.sm},
   badge: {
     borderWidth: 1,
     borderColor: colors.borderStrong,

@@ -1,4 +1,5 @@
 export * from './agent-schemas';
+export * from './approvals';
 export * from './api-types';
 export * from './auth-schemas';
 export * from './characters';

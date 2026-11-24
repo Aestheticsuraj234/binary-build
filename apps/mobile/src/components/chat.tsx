@@ -38,11 +38,15 @@ import {CharacterFace} from '@/components/character-face';
 import {Markdown} from '@/components/markdown';
 import {ToolCallCard} from '@/components/tools';
 import {ApiError, apiFetch, apiJson} from '@/lib/api';
+import {decideRequest} from '@/lib/approvals';
 
-/** One message on screen. An `error` means the answer wasn't saved. */
+/**
+ * One message on screen. An `error` means the answer wasn't saved. A
+ * `note` is from Binary: "You approved shop refund order."
+ */
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'note';
   content: string;
   toolCalls: ToolCallRecord[];
   error?: string;
@@ -238,6 +242,64 @@ export function Chat({
     }
   }
 
+  /**
+   * Approves or rejects a waiting tool call. When it's done, the card
+   * changes and Binary's note and the character's follow-up appear below.
+   */
+  async function decide(
+    call: ToolCallRecord,
+    decision: 'approve' | 'reject',
+  ): Promise<string | undefined> {
+    if (!call.approvalId) {
+      return 'This request is missing.';
+    }
+    clearTimeout(happyTimer.current);
+    setMood('thinking');
+    if (decision === 'approve') {
+      setActiveTool(call.name);
+    }
+    const result = await decideRequest(call.approvalId, decision);
+    setActiveTool(undefined);
+    if (!result.ok) {
+      setMood('idle');
+      return result.alreadyDecided
+        ? `${result.message} Open the chat again to see what happened.`
+        : result.message;
+    }
+    const {decided} = result;
+    setMessages(current => {
+      const known = new Set(current.map(m => m.id));
+      const added: Message[] = [decided.note];
+      if (decided.reply) {
+        added.push(decided.reply);
+      } else if (decided.replyError) {
+        added.push({
+          id: localId(),
+          role: 'assistant',
+          content: '',
+          toolCalls: [],
+          error: decided.replyError,
+        });
+      }
+      return [
+        ...current.map(m =>
+          m.id === decided.messageId
+            ? {
+                ...m,
+                toolCalls: m.toolCalls.map(c =>
+                  c.id === decided.call.id ? decided.call : c,
+                ),
+              }
+            : m,
+        ),
+        ...added.filter(m => !known.has(m.id)),
+      ];
+    });
+    setMood('happy');
+    happyTimer.current = setTimeout(() => setMood('idle'), 2500);
+    return undefined;
+  }
+
   function startNewChat() {
     controllerRef.current?.abort();
     clearTimeout(happyTimer.current);
@@ -383,7 +445,11 @@ export function Chat({
           </View>
         ) : (
           messages.map(message =>
-            message.role === 'user' ? (
+            message.role === 'note' ? (
+              <Text key={message.id} style={styles.note}>
+                {message.content}
+              </Text>
+            ) : message.role === 'user' ? (
               <View key={message.id} style={styles.userBubble}>
                 <Text style={styles.messageText}>{message.content}</Text>
               </View>
@@ -396,7 +462,16 @@ export function Chat({
                 />
                 <View style={styles.agentText}>
                   {message.toolCalls.map(call => (
-                    <ToolCallCard key={call.id} call={call} />
+                    <ToolCallCard
+                      key={call.id}
+                      call={call}
+                      onDecide={
+                        // Only a saved answer's requests exist.
+                        !message.isStreaming && !message.error && !isFired
+                          ? decision => decide(call, decision)
+                          : undefined
+                      }
+                    />
                   ))}
                   {message.content ? (
                     <Markdown isStreaming={message.isStreaming}>
@@ -462,6 +537,12 @@ export function Chat({
 }
 
 const styles = StyleSheet.create({
+  note: {
+    alignSelf: 'center',
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
   screen: {flex: 1, backgroundColor: colors.background},
   headerActions: {flexDirection: 'row', alignItems: 'center', gap: spacing.lg},
   headerAction: {

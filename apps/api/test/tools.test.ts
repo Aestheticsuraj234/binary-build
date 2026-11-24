@@ -15,7 +15,7 @@ import {
   isPublicAddress,
 } from '../src/tools/safe-fetch';
 import type {BinaryTool} from '../src/tools/toolbox';
-import {BLOCKED_REASON, isBlockedResult, Toolbox} from '../src/tools/toolbox';
+import {isWaitingResult, Toolbox, WAITING_MESSAGE} from '../src/tools/toolbox';
 
 describe('isPublicAddress', () => {
   it.each([
@@ -220,20 +220,56 @@ describe('the toolbox policy', () => {
     make('send', 'write'),
     make('click', 'computer'),
   ]);
-  const set = toolbox.toToolSet();
   const options = {toolCallId: 'x', messages: []} as never;
 
-  it('runs read tools', async () => {
-    expect(await set.look!.execute!({}, options)).toBe('ran');
+  /** What each tool does in a mode: its output, or "missing". */
+  async function outcomes(mode: Parameters<Toolbox['toToolSet']>[0]) {
+    ran.length = 0;
+    const set = toolbox.toToolSet(mode);
+    const result: Record<string, unknown> = {};
+    for (const name of ['look', 'send', 'click']) {
+      const output: unknown = set[name]
+        ? await set[name].execute!({}, options)
+        : 'missing';
+      result[name] = isWaitingResult(output) ? 'asks' : output;
+    }
+    return {result, ran: [...ran]};
+  }
+
+  it('Auto-approve reads: reads run, the rest ask', async () => {
+    expect(await outcomes('auto_reads')).toEqual({
+      result: {look: 'ran', send: 'asks', click: 'asks'},
+      ran: ['look'],
+    });
   });
 
-  it('never runs write or computer tools, and says why', async () => {
-    for (const name of ['send', 'click']) {
-      const output: unknown = await set[name]!.execute!({}, options);
-      expect(isBlockedResult(output)).toBe(true);
-      expect(output).toEqual({blocked: true, reason: BLOCKED_REASON});
-    }
-    expect(ran).toEqual(['look']);
+  it('Ask first: everything asks, nothing runs', async () => {
+    expect(await outcomes('ask_first')).toEqual({
+      result: {look: 'asks', send: 'asks', click: 'asks'},
+      ran: [],
+    });
+  });
+
+  it('Accept edits: reads and writes run, computer asks', async () => {
+    expect(await outcomes('accept_edits')).toEqual({
+      result: {look: 'ran', send: 'ran', click: 'asks'},
+      ran: ['look', 'send'],
+    });
+  });
+
+  it('Plan only: no tools are offered at all', async () => {
+    expect(toolbox.toToolSet('plan_only')).toEqual({});
+  });
+
+  it('tells the model a waiting tool has not run', async () => {
+    const output = await toolbox.toToolSet('auto_reads').send!.execute!(
+      {},
+      options,
+    );
+    expect(output).toEqual({
+      status: 'waiting_for_approval',
+      message: WAITING_MESSAGE,
+    });
   });
 
   it('treats an unknown tool as write', () => {

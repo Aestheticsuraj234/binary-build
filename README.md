@@ -10,7 +10,8 @@ that uses each person's own OpenAI, Anthropic or Google key, stored encrypted,
 with a Playground to try it (chapter 3), and agents you hire, each played by
 a cartoon character, on the web and the phone (chapter 4), and routines that
 run on a schedule, from a webhook or on demand, as durable jobs on
-Trigger.dev (chapter 7).
+Trigger.dev (chapter 7), and approvals: risky tools ask for your OK in the
+chat and in a Today inbox (chapter 8).
 
 ## What's inside
 
@@ -183,18 +184,16 @@ shows up live inside the reply, and is saved with it.
     Binary never sees passwords or account tokens.
   - Agents get the tools of every integration with a working account, plus
     the no-account ones (like Hacker News) you switched on.
-  - A Composio tool is `read` only if Composio tags it `readOnlyHint`, and
-    tools run in a Composio session that only enables read-only tools, so
-    Composio itself refuses the rest too.
+  - A Composio tool is `read` only if Composio tags it `readOnlyHint`;
+    the rest are `write` and ask first (see **How approvals work**).
   - Toolkits Composio doesn't manage (no shield on the page) need an auth
     config in your Composio dashboard before they can connect.
 - **Risk levels**: `read` (only looks things up), `write` (changes something
-  outside Binary) and `computer` (sandboxes and computers, later). An app's
+  outside Binary) and `computer` (sandboxes and computers). An app's
   tool is `read` only if its server marks it `readOnlyHint: true`; anything
   else is `write`.
-- **Policy** (`apps/api/src/tools/toolbox.ts`): only `read` tools run. A
-  `write` or `computer` tool is never called; the model is told it was
-  blocked and why, and the reply shows it as blocked.
+- **Policy**: each character's **approval mode** decides what runs, what
+  asks first and what isn't offered. See **How approvals work**.
 - **Public pages only**: `fetch_web_page` refuses this computer, your
   network, cloud metadata addresses and anything else that isn't public.
   The address is checked at the moment of connecting, and again after every
@@ -208,6 +207,47 @@ Routes throw typed errors from `apps/api/src/errors.ts` (`NotFoundError`,
 `InvalidInputError`, `ConflictError`, `NoKeyError`, `UnsafeUrlError`,
 `AppUnreachableError`). One handler turns each into `{code, message}` JSON
 with the right status; anything unexpected becomes a plain 500.
+
+## How approvals work
+
+Each character has an **approval mode**, chosen when you hire or edit it
+(Permissions). One table in `packages/shared/src/approvals.ts` turns a mode
+and a tool's risk into run, ask or never:
+
+| Approval mode          | `read` | `write` | `computer` |
+| ---------------------- | ------ | ------- | ---------- |
+| Plan only              | never  | never   | never      |
+| Ask first              | ask    | ask     | ask        |
+| **Auto-approve reads** | run    | ask     | ask        |
+| Accept edits           | run    | run     | ask        |
+
+New characters start on Auto-approve reads; characters hired before
+approvals existed got it too, so what they already did doesn't change.
+
+- **Asking holds nothing open.** A tool that must ask doesn't run: it
+  returns `waiting_for_approval` to the model, which says what it wants to
+  do, and the answer finishes. The answer is saved together with an
+  **approval request** (`approval_requests`), in one transaction. It waits
+  in the chat (Approve / Reject on the tool card) and in **Today**, first
+  in the nav, with a count. Chats and routine runs work the same way.
+- **Decided once.** `POST /api/approvals/:id/approve` (or `/reject`) moves
+  the request out of `pending` with one conditional update. Of two clicks,
+  or two devices, exactly one wins; the other gets "This request was
+  already decided." (409) and nothing runs for it.
+- **Exactly what was asked.** A request saves the tool's identity (the
+  built-in's name, the app's id and the tool's own name, or the Composio
+  slug), not just the name the model saw. Approving finds that tool and
+  runs it once with the saved input. If it's gone, the request fails and
+  nothing else runs.
+- **The character carries on.** The tool card changes ("Used …"), a note
+  appears ("You approved shop refund order."), and the character's
+  follow-up is a normal new turn that reads what happened. After a
+  rejection the note tells it not to try again unless you ask, and every
+  later turn still sees that note.
+- **Composio** sessions enable a toolkit's write tools too; the approval
+  policy is what guards them.
+- Requests don't expire yet. Approving waits for the tool and the
+  follow-up, so a slow tool makes the button slow.
 
 ## How routines work
 
@@ -224,8 +264,9 @@ Schedule ┘                            Trigger.dev, or inside the API
 ```
 
 - **Same pipeline as chat.** `generateAnswer` (`apps/api/src/chat/answer.ts`)
-  answers both chats and runs: same tools, same system prompt, same rule
-  that only `read` tools run.
+  answers both chats and runs: same tools, same system prompt, same
+  approval rules. A run that asks finishes as Done; its request waits in
+  Today, and approving carries on in the run's transcript.
 - **Never answers twice.** A worker must **claim** a queued run before it
   starts, so a job delivered twice finds nothing the second time. The answer
   and `done` are saved in **one transaction**, guarded by the attempt

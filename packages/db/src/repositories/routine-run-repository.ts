@@ -2,6 +2,8 @@ import {and, desc, eq, inArray, lt, or, sql} from 'drizzle-orm';
 import {TransactionRollbackError} from 'drizzle-orm/errors';
 
 import type {Database} from '../index';
+import type {PendingApproval} from '../schema/approvals';
+import {approvalRequests} from '../schema/approvals';
 import type {MessageRow, ThreadRow} from '../schema/chats';
 import {messages, threads} from '../schema/chats';
 import type {RoutineRunRow} from '../schema/routines';
@@ -177,7 +179,12 @@ export class RoutineRunRepository {
   completeWithAnswer(
     {run, attempt}: ClaimedRun,
     threadId: string,
-    answer: {content: string; toolCalls: unknown[]},
+    answer: {
+      content: string;
+      toolCalls: unknown[];
+      /** Requests it made; they wait in Today, tied to this run. */
+      approvals?: PendingApproval[];
+    },
   ): Promise<MessageRow | undefined> {
     return this.db.transaction(async tx => {
       const finished = await tx
@@ -197,6 +204,16 @@ export class RoutineRunRepository {
           toolCalls: answer.toolCalls,
         })
         .returning();
+      if (answer.approvals?.length) {
+        await tx.insert(approvalRequests).values(
+          answer.approvals.map(approval => ({
+            ...approval,
+            threadId,
+            messageId: message!.id,
+            routineRunId: run.id,
+          })),
+        );
+      }
       await tx
         .update(threads)
         .set({updatedAt: sql`now()`})

@@ -29,6 +29,7 @@ async function tryOpen(
 ): Promise<{app: AppRow; open?: OpenApp; error?: string}> {
   try {
     const open = await openApp({
+      appId: app.id,
       name: app.name,
       url: app.url,
       authorization: authorizationOf(app, vault),

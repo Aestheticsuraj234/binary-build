@@ -1,4 +1,5 @@
 export * from './agents';
+export * from './approvals';
 export * from './apps';
 export * from './auth';
 export * from './chats';

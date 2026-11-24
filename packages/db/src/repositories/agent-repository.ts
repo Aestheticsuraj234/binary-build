@@ -7,7 +7,13 @@ import {agents} from '../schema/agents';
 /** The fields a person can change on their agent. */
 export type AgentChanges = Pick<
   NewAgentRow,
-  'name' | 'avatar' | 'role' | 'instructions' | 'provider' | 'model'
+  | 'name'
+  | 'avatar'
+  | 'role'
+  | 'instructions'
+  | 'provider'
+  | 'model'
+  | 'approvalMode'
 >;
 
 /**

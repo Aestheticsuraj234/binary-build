@@ -6,6 +6,7 @@ import type {
 } from '@binary/shared';
 import {
   colors,
+  DEFAULT_APPROVAL_MODE,
   describeSchedule,
   fontSize,
   fontWeight,
@@ -138,6 +139,7 @@ export default function RoutineScreen() {
           provider: null,
           model: null,
           templateId: null,
+          approvalMode: DEFAULT_APPROVAL_MODE,
         },
         ...agents.data.agents,
       ];

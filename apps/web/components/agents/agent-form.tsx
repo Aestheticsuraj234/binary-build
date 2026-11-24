@@ -3,12 +3,15 @@
 import type {
   AgentInput,
   AgentSummary,
+  ApprovalMode,
   FieldErrors,
   Mood,
   ProviderId,
 } from '@binary/shared';
 import {
   agentInputSchema,
+  APPROVAL_MODE_INFO,
+  APPROVAL_MODES,
   CAST,
   characterOf,
   getProvider,
@@ -313,6 +316,41 @@ export function AgentForm({
             </div>
           </Field>
         </div>
+
+        <fieldset>
+          <legend className="mb-1 text-sm font-medium">Permissions</legend>
+          <p className="mb-3 text-sm text-muted-foreground">
+            How much {displayName} may do without asking you first.
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {APPROVAL_MODES.map(mode => (
+              <label
+                key={mode}
+                className={cn(
+                  'flex cursor-pointer flex-col gap-1 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50',
+                  values.approvalMode === mode
+                    ? 'border-primary bg-secondary'
+                    : 'border-input hover:bg-secondary/60',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="approvalMode"
+                  value={mode}
+                  checked={values.approvalMode === mode}
+                  onChange={() => set('approvalMode', mode as ApprovalMode)}
+                  className="sr-only"
+                />
+                <span className="font-medium">
+                  {APPROVAL_MODE_INFO[mode].label}
+                </span>
+                <span className="text-muted-foreground">
+                  {APPROVAL_MODE_INFO[mode].description}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <Button

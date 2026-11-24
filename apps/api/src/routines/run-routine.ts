@@ -140,9 +140,11 @@ export async function runRoutine(
     if (!outcome.ok) {
       throw new RunFailure(outcome.error);
     }
+    // Requests it made wait in Today; the run itself is done.
     const saved = await runs.completeWithAnswer(claimed, threadId, {
       content: outcome.text,
       toolCalls: outcome.toolCalls,
+      approvals: outcome.approvals,
     });
     return saved ? {status: 'done'} : {status: 'skipped'};
   } catch (error) {

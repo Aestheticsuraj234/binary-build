@@ -58,13 +58,16 @@ export function titleFromMessage(message: string): string {
 /**
  * The part of a chat the model reads: the newest `size` messages, oldest
  * first. A window never starts with an answer, since some providers want
- * the person to speak first.
+ * the person to speak first. (A note from Binary reaches the model on the
+ * person's side, so a window may start with one.)
  */
-export function contextWindow<T extends ChatTurn>(
+export function contextWindow<T extends {role: 'user' | 'assistant' | 'note'}>(
   messages: readonly T[],
   size = CHAT_CONTEXT_MESSAGES,
 ): T[] {
   const recent = messages.slice(-size);
-  const firstQuestion = recent.findIndex(message => message.role === 'user');
+  const firstQuestion = recent.findIndex(
+    message => message.role !== 'assistant',
+  );
   return firstQuestion === -1 ? [] : recent.slice(firstQuestion);
 }

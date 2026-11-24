@@ -14,13 +14,13 @@ import type {
   RoutineSaved,
   RoutinesOverview,
   ThreadDetail,
+  TodayOverview,
 } from '@binary/shared';
 import {ROUTINE_MESSAGES} from '@binary/shared';
 import type {MockLanguageModelV4} from 'ai/test';
 import {afterAll, beforeEach, describe, expect, it} from 'vitest';
 import {z} from 'zod';
 
-import {BLOCKED_FOR_PERSON} from '../src/chat/answer';
 import type {ModelBuilder} from '../src/engine/factory';
 import {InvalidInputError, JobsUnavailableError} from '../src/errors';
 import type {JobRunner, SavedSchedule, Schedule} from '../src/jobs/job-runner';
@@ -381,7 +381,7 @@ describe('Run now (no Trigger.dev)', () => {
     expect((await getRoutine(routine.id)).runs[0]!.status).toBe('done');
   });
 
-  it('keeps chat rules: write tools are blocked, not run', async () => {
+  it('keeps chat rules: a write tool asks, and its request waits in Today', async () => {
     makeModel = () =>
       scriptedModel([
         {toolCalls: [{name: 'send_email', input: {to: 'boss@example.com'}}]},
@@ -397,9 +397,20 @@ describe('Run now (no Trigger.dev)', () => {
     expect(sendEmailRuns).toBe(0);
     expect(answer!.toolCalls[0]).toMatchObject({
       name: 'send_email',
-      status: 'blocked',
-      error: BLOCKED_FOR_PERSON,
+      status: 'waiting',
     });
+    const today = (await (
+      await callApi(local.app, '/api/today', {cookie})
+    ).json()) as TodayOverview;
+    expect(today.waiting).toMatchObject([
+      {
+        id: answer!.toolCalls[0]!.approvalId,
+        toolName: 'send_email',
+        routineName: 'Morning plan',
+        input: {to: 'boss@example.com'},
+      },
+    ]);
+    expect((await getRoutine(routine.id)).runs[0]!.status).toBe('done');
   });
 
   it('fails with a reason when the key is missing', async () => {

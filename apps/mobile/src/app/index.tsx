@@ -59,6 +59,8 @@ export default function DiscoverScreen() {
   );
   const keys = useApi<{keys: ProviderKeyStatus[]}>('/api/keys');
   const threads = useApi<{threads: ThreadSummary[]}>('/api/threads');
+  const pending = useApi<{pending: number}>('/api/approvals/count');
+  const waitingCount = pending.data?.pending ?? 0;
   const recent = threads.data?.threads ?? [];
 
   const firstName = session?.user.name.split(' ')[0] ?? 'there';
@@ -72,6 +74,7 @@ export default function DiscoverScreen() {
       templates.reload(),
       keys.reload(),
       threads.reload(),
+      pending.reload(),
     ]);
   }
 
@@ -137,6 +140,25 @@ export default function DiscoverScreen() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push('/today')}
+          style={({pressed}) => [
+            styles.today,
+            waitingCount > 0 && styles.todayWaiting,
+            pressed && styles.todayPressed,
+          ]}
+        >
+          <Text style={styles.todayTitle}>Today</Text>
+          <Text
+            style={[styles.todayText, waitingCount > 0 && styles.todayCount]}
+          >
+            {waitingCount > 0
+              ? `${waitingCount} waiting for your OK →`
+              : 'Nothing waiting. See recent routine runs →'}
+          </Text>
+        </Pressable>
+
         {!hasKey && (
           <View style={styles.block}>
             <NeedsKey message="Your agents think with your own OpenAI, Anthropic or Google Gemini key. Add one to start hiring." />
@@ -196,6 +218,24 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
+  today: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  todayWaiting: {borderColor: colors.warning},
+  todayPressed: {backgroundColor: colors.surfaceRaised},
+  todayTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+  },
+  todayText: {color: colors.textMuted, fontSize: fontSize.sm},
+  todayCount: {color: colors.warning},
   safeArea: {flex: 1, backgroundColor: colors.background},
   topBar: {
     flexDirection: 'row',

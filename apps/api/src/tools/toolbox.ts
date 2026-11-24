@@ -1,5 +1,6 @@
-import type {ToolRisk, ToolSummary} from '@binary/shared';
-import {runsWithoutAsking} from '@binary/shared';
+import type {ToolSource} from '@binary/db';
+import type {ApprovalMode, ToolRisk, ToolSummary} from '@binary/shared';
+import {decideTool} from '@binary/shared';
 import type {FlexibleSchema, ToolSet} from 'ai';
 import {tool} from 'ai';
 
@@ -11,29 +12,40 @@ export interface BinaryTool {
   risk: ToolRisk;
   inputSchema: FlexibleSchema<unknown>;
   /**
+   * Exactly where the tool comes from, so an approved request runs this
+   * tool and no other. Built-in tools can leave it out.
+   */
+  source?: ToolSource;
+  /**
    * Does the work. Throws an `Error` whose message is safe to show the
    * person and the model.
    */
   run(input: unknown, signal: AbortSignal | undefined): Promise<unknown>;
 }
 
-/** What the model reads when it calls a blocked tool. */
-export const BLOCKED_REASON =
-  'Blocked: this tool can change things outside Binary, so it needs the ' +
-  "person's approval first, and approvals aren't available yet. Nothing " +
-  'was done. Tell the person what you would have done instead.';
-
-/** What a blocked call returns to the model. */
-export interface BlockedResult {
-  blocked: true;
-  reason: string;
+/** Where a tool comes from; built-in tools are found by their name. */
+export function sourceOf(binaryTool: BinaryTool): ToolSource {
+  return binaryTool.source ?? {kind: 'built-in', name: binaryTool.name};
 }
 
-export function isBlockedResult(output: unknown): output is BlockedResult {
+/** What the model reads when a tool needs the person's OK. */
+export const WAITING_MESSAGE =
+  "Not run yet: this needs the person's OK, and Binary has asked them. " +
+  'Tell them what you want to do and why, and that it runs once they ' +
+  "approve. Don't call this tool again for it; Binary tells you when " +
+  "they've decided.";
+
+/** What a tool that asks returns to the model, instead of running. */
+export interface WaitingResult {
+  status: 'waiting_for_approval';
+  message: string;
+}
+
+export function isWaitingResult(output: unknown): output is WaitingResult {
   return (
     typeof output === 'object' &&
     output !== null &&
-    (output as {blocked?: unknown}).blocked === true
+    (output as {status?: unknown}).status === 'waiting_for_approval'
   );
 }
 
@@ -46,9 +58,11 @@ export function toSummary(binaryTool: BinaryTool): ToolSummary {
 }
 
 /**
- * Every tool and its risk, ready for the model. The policy lives here:
- * only `read` tools run. Any other tool's `run` is never called; the model
- * gets `BLOCKED_REASON` back instead, so it can explain.
+ * Every tool and its risk, ready for the model. The policy lives here, as
+ * one lookup in `APPROVAL_POLICY`: a tool that may run, runs; one that
+ * must ask returns `WaitingResult` without running, so the answer can
+ * finish and the request wait in the database; one that's never allowed
+ * isn't offered at all.
  */
 export class Toolbox {
   private readonly byName = new Map<string, BinaryTool>();
@@ -63,6 +77,11 @@ export class Toolbox {
     }
   }
 
+  /** The tool the model called by `name`, if there is one. */
+  find(name: string): BinaryTool | undefined {
+    return this.byName.get(name);
+  }
+
   /** The risk of a tool, or `write` for a name we don't know. */
   riskOf(name: string): ToolRisk {
     return this.byName.get(name)?.risk ?? 'write';
@@ -72,23 +91,27 @@ export class Toolbox {
     return [...this.byName.values()].map(toSummary);
   }
 
-  /** The tools in the shape the Vercel AI SDK wants. */
-  toToolSet(): ToolSet {
+  /** The tools in the shape the Vercel AI SDK wants, for one approval mode. */
+  toToolSet(mode: ApprovalMode): ToolSet {
     const set: ToolSet = {};
     for (const binaryTool of this.byName.values()) {
-      const allowed = runsWithoutAsking(binaryTool.risk);
+      const decision = decideTool(mode, binaryTool.risk);
+      if (decision === 'never') {
+        continue;
+      }
       set[binaryTool.name] = tool({
-        description: allowed
-          ? binaryTool.description
-          : `${binaryTool.description} (Blocked for now: needs the person's approval.)`,
+        description:
+          decision === 'ask'
+            ? `${binaryTool.description} (Asks the person first.)`
+            : binaryTool.description,
         inputSchema: binaryTool.inputSchema,
         execute: async (input: unknown, {abortSignal}) => {
-          if (!allowed) {
-            const blocked: BlockedResult = {
-              blocked: true,
-              reason: BLOCKED_REASON,
+          if (decision === 'ask') {
+            const waiting: WaitingResult = {
+              status: 'waiting_for_approval',
+              message: WAITING_MESSAGE,
             };
-            return blocked;
+            return waiting;
           }
           return binaryTool.run(input, abortSignal);
         },

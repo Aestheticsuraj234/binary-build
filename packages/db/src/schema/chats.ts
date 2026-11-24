@@ -40,7 +40,10 @@ export const threads = pgTable(
   ],
 );
 
-/** One message in a thread, from the person or the agent. */
+/**
+ * One message in a thread: from the person, the agent, or a `note` from
+ * Binary itself ("You approved shop refund order.").
+ */
 export const messages = pgTable(
   'messages',
   {
@@ -48,9 +51,12 @@ export const messages = pgTable(
     threadId: uuid('thread_id')
       .notNull()
       .references(() => threads.id, {onDelete: 'cascade'}),
-    role: text('role', {enum: ['user', 'assistant']}).notNull(),
+    role: text('role', {enum: ['user', 'assistant', 'note']}).notNull(),
     content: text('content').notNull(),
-    /** Tools the agent used while answering (a `ToolCallRecord[]`). */
+    /**
+     * Tools the agent used while answering (a `ToolCallRecord[]`). A note
+     * carries the one call it's about.
+     */
     toolCalls: jsonb('tool_calls').$type<unknown[]>().default([]).notNull(),
     // The real clock, not the transaction start, so two messages saved in
     // one transaction still sort in the order they were written.

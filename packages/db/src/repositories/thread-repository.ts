@@ -2,6 +2,8 @@ import {and, asc, desc, eq, isNotNull, sql} from 'drizzle-orm';
 
 import type {Database} from '../index';
 import type {AgentRow} from '../schema/agents';
+import type {PendingApproval} from '../schema/approvals';
+import {approvalRequests} from '../schema/approvals';
 import {agents} from '../schema/agents';
 import type {MessageRow, ThreadRow} from '../schema/chats';
 import {messages, threads} from '../schema/chats';
@@ -120,17 +122,30 @@ export class ThreadRepository {
     });
   }
 
-  /** Saves a complete answer from the agent, with the tools it used. */
+  /**
+   * Saves a complete answer from the agent, with the tools it used and
+   * any approval requests it made, all or nothing.
+   */
   addAnswer(
     threadId: string,
     content: string,
     toolCalls: unknown[] = [],
+    approvals: PendingApproval[] = [],
   ): Promise<MessageRow> {
     return this.db.transaction(async tx => {
       const [row] = await tx
         .insert(messages)
         .values({threadId, role: 'assistant', content, toolCalls})
         .returning();
+      if (approvals.length > 0) {
+        await tx.insert(approvalRequests).values(
+          approvals.map(approval => ({
+            ...approval,
+            threadId,
+            messageId: row!.id,
+          })),
+        );
+      }
       await tx
         .update(threads)
         .set({updatedAt: sql`now()`})

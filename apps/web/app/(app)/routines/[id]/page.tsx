@@ -1,3 +1,4 @@
+import {DEFAULT_APPROVAL_MODE} from '@binary/shared';
 import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
 import {Suspense} from 'react';
@@ -33,6 +34,7 @@ async function Routine({
           provider: null,
           model: null,
           templateId: null,
+          approvalMode: DEFAULT_APPROVAL_MODE,
         },
         ...agents,
       ];

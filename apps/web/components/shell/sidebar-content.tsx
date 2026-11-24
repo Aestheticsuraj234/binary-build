@@ -10,7 +10,7 @@ import {NavLinkList, NavLinks} from '@/components/nav-links';
 import {SignOutButton} from '@/components/sign-out-button';
 import {Skeleton} from '@/components/ui/skeleton';
 import {RecentChats} from '@/components/shell/recent-chats';
-import {fetchAgents, fetchThreads} from '@/lib/api';
+import {fetchAgents, fetchPendingCount, fetchThreads} from '@/lib/api';
 import {getSessionUser} from '@/lib/session';
 
 /** "Ada Lovelace" becomes "AL". Falls back to the email's first letters. */
@@ -59,6 +59,11 @@ async function CrewList() {
       ))}
     </ul>
   );
+}
+
+/** The main links, with how many requests wait in Today. */
+async function NavWithCount() {
+  return <NavLinks initialPending={await fetchPendingCount()} />;
 }
 
 /** "New chat", then Recent chats and the crew in one scrolling list. */
@@ -119,7 +124,7 @@ export function SidebarContent({idPrefix}: {idPrefix: string}) {
       </Link>
       {/* The URL is only known at request time, so the highlight streams in. */}
       <Suspense fallback={<NavLinkList activePath={null} />}>
-        <NavLinks />
+        <NavWithCount />
       </Suspense>
       <Suspense
         fallback={
