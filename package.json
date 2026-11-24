@@ -6,6 +6,7 @@
     "setup": "node scripts/setup.ts",
     "dev": "docker compose up -d --wait && turbo run dev --filter=api --filter=web",
     "mobile": "pnpm --filter mobile start",
+    "trigger:dev": "pnpm --filter api trigger:dev",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @binary/db db:migrate",

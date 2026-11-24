@@ -4,6 +4,8 @@ packages:
 
 # Packages allowed to run install scripts. Everything else is blocked.
 allowBuilds:
+  # Only `trigger.dev deploy` (cloud builds) uses it; local dev doesn't.
+  '@depot/cli': false
   esbuild: true
   sharp: true
   unrs-resolver: true

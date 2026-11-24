@@ -8,6 +8,7 @@ import {
   FlaskConicalIcon,
   KeyRoundIcon,
   PlugIcon,
+  Repeat2Icon,
 } from 'lucide-react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
@@ -21,6 +22,7 @@ interface NavItem {
 /** The app's main sections. Later chapters add theirs here. */
 const NAV_ITEMS: NavItem[] = [
   {href: '/', label: 'Discover', icon: CompassIcon},
+  {href: '/routines', label: 'Routines', icon: Repeat2Icon},
   {href: '/apps', label: 'Apps & tools', icon: PlugIcon},
   {href: '/integrations', label: 'Integrations', icon: BlocksIcon},
   {href: '/playground', label: 'Playground', icon: FlaskConicalIcon},

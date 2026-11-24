@@ -8,7 +8,9 @@ So far: a monorepo with an API, a web app and a mobile app, sharing one
 Postgres database and email-and-password sign-in (chapter 1), plus an AI engine
 that uses each person's own OpenAI, Anthropic or Google key, stored encrypted,
 with a Playground to try it (chapter 3), and agents you hire, each played by
-a cartoon character, on the web and the phone (chapter 4).
+a cartoon character, on the web and the phone (chapter 4), and routines that
+run on a schedule, from a webhook or on demand, as durable jobs on
+Trigger.dev (chapter 7).
 
 ## What's inside
 
@@ -64,6 +66,7 @@ The phone talks to the API at your computer's Wi-Fi address, which
 | ------------------ | -------------------------------------------- |
 | `pnpm dev`         | Start Postgres, the API and the web app.     |
 | `pnpm mobile`      | Start the Expo dev server for the phone.     |
+| `pnpm trigger:dev` | Run the Trigger.dev worker (routines).       |
 | `pnpm lint`        | ESLint, then a Prettier formatting check.    |
 | `pnpm format`      | Fix formatting with Prettier.                |
 | `pnpm check-types` | TypeScript in every package.                 |
@@ -205,6 +208,65 @@ Routes throw typed errors from `apps/api/src/errors.ts` (`NotFoundError`,
 `InvalidInputError`, `ConflictError`, `NoKeyError`, `UnsafeUrlError`,
 `AppUnreachableError`). One handler turns each into `{code, message}` JSON
 with the right status; anything unexpected becomes a plain 500.
+
+## How routines work
+
+A **routine** is a job a character does again and again, like "every
+weekday at 9:00, plan my day". It starts on a **schedule**, from a
+**webhook**, or when you press **Run now**. Each run gets its own chat as a
+transcript, named after the routine and the time ("Morning plan · 24 Nov,
+09:00").
+
+```
+Run now ─┐
+Webhook ─┼─▶ routine_runs (queued) ─▶ job runner ─▶ runRoutine ─▶ chat pipeline
+Schedule ┘                            Trigger.dev, or inside the API
+```
+
+- **Same pipeline as chat.** `generateAnswer` (`apps/api/src/chat/answer.ts`)
+  answers both chats and runs: same tools, same system prompt, same rule
+  that only `read` tools run.
+- **Never answers twice.** A worker must **claim** a queued run before it
+  starts, so a job delivered twice finds nothing the second time. The answer
+  and `done` are saved in **one transaction**, guarded by the attempt
+  number, so a slow earlier attempt can't add a second answer. A retry may
+  take over a run its dead attempt left `running` (nothing was saved yet).
+  Scheduled runs are keyed by their cron time, and webhooks by an optional
+  `Idempotency-Key` header, so a repeated event makes one run.
+- **Job runners** (`apps/api/src/jobs/`): with `TRIGGER_SECRET_KEY` set,
+  runs and schedules go to Trigger.dev (tasks in `apps/api/src/trigger/`);
+  without it, runs happen inside the API, unfinished ones are picked up
+  again when the API restarts, and schedules are saved but don't fire. The
+  Routines page says so.
+- **Your time zone.** Schedules are cron in your time zone, detected from
+  your browser or phone the first time and changeable on the page. Names are
+  made canonical ("Asia/Kolkata" becomes "Asia/Calcutta"), the spelling
+  Trigger.dev accepts. Changing it moves every schedule.
+- **Trigger.dev's Free plan** refuses schedules more often than hourly and
+  starts runs up to 60 minutes after their time. The page shows that window
+  when Trigger.dev reports it.
+- **Webhooks**: `POST /api/hooks/routines/:id` with
+  `Authorization: Bearer whsec_…`. The secret is shown once and stored only
+  as a SHA-256 hash; a wrong or missing one gets a 401. The body (up to
+  32 KB) is someone else's text: it reaches the model inside a fenced
+  `webhook-data` block that it can't close early, and the system prompt says
+  never to follow instructions inside it.
+- Runs stuck in the queue for an hour, or running for 45 minutes, are marked
+  failed with the reason.
+
+### Routines on Trigger.dev
+
+1. Put your project's ref in `apps/api/trigger.config.ts` (`proj_…`).
+2. Put its **DEV** secret key (`tr_dev_…`, from the project's API keys page)
+   in `.env` as `TRIGGER_SECRET_KEY`, and restart `pnpm dev`.
+3. Log in once: `pnpm --filter api exec trigger login`.
+4. In a second terminal: `pnpm trigger:dev`, and wait for
+   `Local worker ready`. It loads the repo's `.env` for the database.
+
+With the key set, every run goes through Trigger.dev, so keep
+`pnpm trigger:dev` running or runs stay "Queued". In development,
+schedules only fire while it runs. The `@trigger.dev/*` packages and the
+`trigger.dev` CLI must all be on the same version.
 
 ## Code style
 

@@ -9,7 +9,8 @@
     "WEB_URL",
     "API_URL",
     "PORT",
-    "COMPOSIO_API_KEY"
+    "COMPOSIO_API_KEY",
+    "TRIGGER_SECRET_KEY"
   ],
   "tasks": {
     "build": {

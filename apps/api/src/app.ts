@@ -14,7 +14,14 @@ import {keysRoutes} from './routes/keys';
 import {playgroundRoutes} from './routes/playground';
 import {appsRoutes} from './routes/apps';
 import {integrationsRoutes} from './routes/integrations';
+import {hooksRoutes} from './routes/hooks';
+import {routinesRoutes} from './routes/routines';
+import {settingsRoutes} from './routes/settings';
 import {threadsRoutes} from './routes/threads';
+import type {JobRunner} from './jobs/job-runner';
+import {InProcessRunner} from './jobs/job-runner';
+import {createRoutineExecutor} from './routines/run-routine';
+import {RoutineService} from './routines/service';
 import {builtInTools as defaultBuiltInTools} from './tools/built-in';
 import type {ComposioGateway} from './tools/composio';
 import type {BinaryTool} from './tools/toolbox';
@@ -34,6 +41,13 @@ export interface AppOptions {
   composio?: ComposioGateway | null;
   /** The web app's address, for links back after connecting an app. */
   webUrl?: string;
+  /** The API's public address, for webhook URLs. */
+  apiUrl?: string;
+  /**
+   * Where routines run: Trigger.dev, or (the default) inside the API with
+   * no schedules.
+   */
+  jobRunner?: JobRunner;
 }
 
 /**
@@ -49,12 +63,27 @@ export function createApp({
   builtInTools = defaultBuiltInTools,
   composio = null,
   webUrl = 'http://localhost:3000',
+  apiUrl = 'http://localhost:3001',
+  jobRunner,
 }: AppOptions) {
   const app = new Hono();
   // Typed errors thrown anywhere become `{code, message}` JSON.
   app.onError(handleError);
 
   app.get('/health', c => c.json({ok: true}));
+
+  const jobs =
+    jobRunner ??
+    new InProcessRunner(
+      db,
+      createRoutineExecutor({db, vault, buildModel, builtInTools, composio}),
+    );
+  const routines = new RoutineService(db, jobs);
+
+  // Webhooks come from other services, not a signed-in person: their
+  // routine's secret is checked instead of a session. Mounted before the
+  // signed-in routes, so their session and CSRF checks never run here.
+  app.route('/api/hooks', hooksRoutes({db, service: routines}));
 
   // Better Auth handles everything under /api/auth: sign-up, sign-in,
   // sign-out and reading the current session.
@@ -76,6 +105,8 @@ export function createApp({
     threadsRoutes({db, vault, engineFor, builtInTools, composio}),
   );
   signedIn.route('/integrations', integrationsRoutes({db, composio, webUrl}));
+  signedIn.route('/routines', routinesRoutes({db, service: routines, apiUrl}));
+  signedIn.route('/settings', settingsRoutes({db, service: routines}));
   app.route('/api', signedIn);
 
   return app;

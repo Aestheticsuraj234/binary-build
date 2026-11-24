@@ -10,7 +10,7 @@ import type {MockLanguageModelV4} from 'ai/test';
 import {afterAll, beforeAll, beforeEach, describe, expect, it} from 'vitest';
 
 import type {ModelBuilder} from '../src/engine/factory';
-import {BLOCKED_FOR_PERSON} from '../src/routes/threads';
+import {BLOCKED_FOR_PERSON} from '../src/chat/answer';
 import {currentTimeTool, webPageTool} from '../src/tools/built-in';
 import {BLOCKED_REASON} from '../src/tools/toolbox';
 import type {ScriptedStep} from './helpers';

@@ -67,10 +67,28 @@ const envSchema = z.object({
     .trim()
     .optional()
     .transform(key => (key && !isPlaceholderSecret(key) ? key : undefined)),
+  /**
+   * Optional. Runs routines on Trigger.dev, with real schedules. Without
+   * it, runs happen inside the API and schedules don't fire.
+   */
+  TRIGGER_SECRET_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform(key => (key && !isPlaceholderSecret(key) ? key : undefined)),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
 });
+
+/** What the Trigger.dev worker needs: the database, the vault and Composio. */
+const workerEnvSchema = envSchema.pick({
+  DATABASE_URL: true,
+  ENCRYPTION_KEY: true,
+  COMPOSIO_API_KEY: true,
+});
+
+export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 /** The API's checked configuration. */
 export type Env = z.infer<typeof envSchema>;
@@ -82,7 +100,21 @@ export type Env = z.infer<typeof envSchema>;
  * startup instead of failing later with a confusing message.
  */
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(source);
+  return checked(envSchema, source);
+}
+
+/** Checks the Trigger.dev worker's environment, the same way. */
+export function parseWorkerEnv(
+  source: Record<string, string | undefined>,
+): WorkerEnv {
+  return checked(workerEnvSchema, source);
+}
+
+function checked<T>(
+  schema: z.ZodType<T>,
+  source: Record<string, string | undefined>,
+): T {
+  const result = schema.safeParse(source);
   if (result.success) {
     return result.data;
   }

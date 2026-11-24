@@ -66,6 +66,15 @@ export default function RootLayout() {
             options={{...INNER_SCREEN, title: 'Recent chats'}}
           />
           <Stack.Screen
+            name="routines/index"
+            options={{...INNER_SCREEN, title: 'Routines'}}
+          />
+          <Stack.Screen
+            name="routines/new"
+            options={{...INNER_SCREEN, title: 'New routine'}}
+          />
+          <Stack.Screen name="routines/[id]" options={INNER_SCREEN} />
+          <Stack.Screen
             name="agents/[id]/edit"
             options={{...INNER_SCREEN, title: 'Edit'}}
           />
