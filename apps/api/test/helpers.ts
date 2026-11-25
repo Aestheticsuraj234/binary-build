@@ -5,7 +5,9 @@ import {MockLanguageModelV4} from 'ai/test';
 
 import {createApp} from '../src/app';
 import {createAuth} from '../src/auth';
+import type {EmbeddingModelBuilder} from '../src/embeddings/embedder';
 import type {ModelBuilder} from '../src/engine/factory';
+import type {PageFetcher} from '../src/knowledge/library';
 import type {JobRunner} from '../src/jobs/job-runner';
 import type {BrowserManager} from '../src/browser/manager';
 import type {DesktopProvider} from '../src/desktop/provider';
@@ -14,6 +16,7 @@ import type {ComposioGateway} from '../src/tools/composio';
 import type {BinaryTool} from '../src/tools/toolbox';
 import type {Vault} from '../src/vault';
 import {createVault} from '../src/vault';
+import {fakeEmbeddingBuilder} from './fake-embedder';
 import {
   API_URL,
   TEST_DATABASE_URL,
@@ -26,6 +29,10 @@ import {
 export function createTestApp(
   options: {
     buildModel?: ModelBuilder;
+    /** Embeddings: the offline fake unless a test passes its own. */
+    buildEmbeddingModel?: EmbeddingModelBuilder;
+    /** Fetches pages for Knowledge (one that can reach the test server). */
+    fetchPage?: PageFetcher;
     builtInTools?: () => BinaryTool[];
     composio?: ComposioGateway | null;
     /** Builds the job runner from the test app's database and vault. */
@@ -53,6 +60,9 @@ export function createTestApp(
     vault,
     trustedOrigins,
     buildModel: options.buildModel,
+    // Never the real providers: tests stay offline.
+    buildEmbeddingModel: options.buildEmbeddingModel ?? fakeEmbeddingBuilder(),
+    fetchPage: options.fetchPage,
     builtInTools: options.builtInTools,
     composio: options.composio,
     webUrl: WEB_URL,

@@ -7,6 +7,8 @@ import {
 
 import type {AnswerDeps} from '../chat/answer';
 import {generateAnswer} from '../chat/answer';
+import type {EmbeddingModelBuilder} from '../embeddings/embedder';
+import {createEmbedderFactory} from '../embeddings/embedder';
 import type {EngineFactory, ModelBuilder} from '../engine/factory';
 import {createEngineFactory} from '../engine/factory';
 import {BrowserManager} from '../browser/manager';
@@ -163,6 +165,8 @@ export interface ExecutorOptions {
   desktops?: DesktopManager;
   /** Your computers. Unreachable unless given. */
   runners?: RunnerAccess;
+  /** Tests pass a fake embedding model builder. */
+  buildEmbeddingModel?: EmbeddingModelBuilder;
 }
 
 /** Builds `runRoutine` with its dependencies filled in. */
@@ -176,6 +180,7 @@ export function createRoutineExecutor({
   browsers = new BrowserManager({available: false}),
   desktops = new DesktopManager(db, null),
   runners = new RunnerAccess(db, new RunnerHub(), ROUTINES_CANT_REACH),
+  buildEmbeddingModel,
 }: ExecutorOptions): RoutineExecutor {
   const deps: RunDeps = {
     db,
@@ -187,6 +192,7 @@ export function createRoutineExecutor({
     desktops,
     runners,
     engineFor: createEngineFactory({db, vault, buildModel}),
+    embedders: createEmbedderFactory({db, vault, buildEmbeddingModel}),
   };
   return (runId, options) => runRoutine(deps, runId, options);
 }

@@ -105,6 +105,13 @@ export class JobsUnavailableError extends AppError {
   }
 }
 
+/** 502: the embedding provider couldn't turn text into vectors. */
+export class EmbeddingFailedError extends AppError {
+  constructor(message: string) {
+    super(API_ERROR_CODES.embeddingFailed, 502, message);
+  }
+}
+
 /** Hono's `onError`: typed errors become clean JSON, the rest a 500. */
 export function handleError(error: Error, c: Context): Response {
   if (error instanceof AppError) {

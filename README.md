@@ -15,7 +15,9 @@ chat and in a Today inbox (chapter 8), and cloud sandboxes from E2B where
 characters run code and draw charts (chapter 9), and a headless browser
 that opens public pages and asks before clicking (chapter 10), and the
 Runner: characters work on your own computer, think with Claude Code or
-Codex, or use a cloud desktop you can watch live (chapter 11).
+Codex, or use a cloud desktop you can watch live (chapter 11), and memory
+and knowledge: each character remembers lasting facts about you, and all of
+them search a library of your own documents and cite it (chapter 12).
 
 ## What's inside
 
@@ -348,6 +350,50 @@ browser character: _"Open example.com and tell me what it says."_
 - **One place for computers.** `GET /api/computers` lists sandboxes and
   browsers together, and `POST /api/computers/:id/stop` stops either. The
   chat header and Apps & tools use it.
+
+## How memory and knowledge work
+
+Both live in Postgres as **pgvector** embeddings (the chapter 12 migration
+turns the extension on), made with the Vercel AI SDK's `embedMany` and your
+own key: **OpenAI** (`text-embedding-3-small`) if you saved one, otherwise
+**Google** (`gemini-embedding-001`). Both are asked for 1536 dimensions, so
+they fit one `vector(1536)` column (`apps/api/src/embeddings/embedder.ts`).
+
+- **Anthropic has no embedding models.** With only an Anthropic key, memory
+  and knowledge are off: the Memory and Knowledge pages say which key to
+  add, chats leave them out, and saving returns `409 NO_KEY`.
+- **Only the same model is compared.** Every vector is saved with the name
+  of the model that made it, and every search filters on it. After a
+  switch (say OpenAI to Google), older vectors can't be searched; both pages
+  say how many and offer **Re-index**, which embeds them again.
+- **Memory is per character** (`apps/api/src/memory/`). A character saves
+  facts with `remember`, searches them with `recall` and drops one with
+  `forget`; you can add and forget them on its **Memory** page (next to
+  Edit in a chat, or the chat menu on the phone). Up to **20** memories,
+  every one goes into the system prompt, because a fact like "prefers short
+  answers" never looks similar to a question; above that, the 20 closest to
+  the message plus the 5 newest.
+- **No duplicates, no secrets.** The same words (ignoring case and spacing)
+  are a duplicate, and so is a memory whose embedding is almost the same
+  (`MEMORY_SIMILARITY`). One that's only similar isn't saved by the tool
+  yet: the character is told and can say `replaces` or `isNew`. Anything
+  that looks like a password, API key, token, private key, card or social
+  security number is refused (`looksLikeSecret` in `@binary/shared`).
+- **Knowledge is yours, shared by every character** (`apps/api/src/knowledge/`).
+  Paste text, upload a text file (`.txt`, `.md`, `.csv`, `.json`, `.html`;
+  web only) or add a public web page (fetched once, through the same safe
+  fetcher as `fetch_web_page`). It's cut into ~1,000-character passages at
+  headings and paragraphs, overlapping by 150, and embedded with its title.
+  **Try a question** shows what a search would find.
+- **Searched, not pasted.** The system prompt names your documents;
+  characters call `search_knowledge` and are told to name the document they
+  used. Passages come back labelled as information, not instructions, and
+  the prompt says never to follow anything written inside them.
+- **They never ask first.** All four tools only touch your own Binary
+  records, which you can see and delete, so they run in every approval mode
+  except Plan only (which has no tools, but still gets its memories).
+- **Tests stay offline**: `apps/api/test/fake-embedder.ts` turns words into
+  vectors with a hash, so text that shares words lands close.
 
 ## How cloud sandboxes work
 

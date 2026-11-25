@@ -4,6 +4,7 @@ import {cn} from 'cn';
 import type {LucideIcon} from 'lucide-react';
 import {
   BlocksIcon,
+  BookOpenIcon,
   CompassIcon,
   FlaskConicalIcon,
   InboxIcon,
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   {href: '/today', label: 'Today', icon: InboxIcon},
   {href: '/', label: 'Discover', icon: CompassIcon},
   {href: '/routines', label: 'Routines', icon: Repeat2Icon},
+  {href: '/knowledge', label: 'Knowledge', icon: BookOpenIcon},
   {href: '/apps', label: 'Apps & tools', icon: PlugIcon},
   {href: '/computers', label: 'Your computers', icon: LaptopIcon},
   {href: '/integrations', label: 'Integrations', icon: BlocksIcon},

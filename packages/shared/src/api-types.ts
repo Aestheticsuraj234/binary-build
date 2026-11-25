@@ -92,6 +92,7 @@ export const API_ERROR_CODES = {
   tooLarge: 'TOO_LARGE',
   jobsUnavailable: 'JOBS_UNAVAILABLE',
   alreadyDecided: 'ALREADY_DECIDED',
+  embeddingFailed: 'EMBEDDING_FAILED',
 } as const;
 
 export type ApiErrorCode =

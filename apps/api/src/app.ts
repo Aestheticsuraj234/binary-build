@@ -4,6 +4,8 @@ import {csrf} from 'hono/csrf';
 
 import type {Auth} from './auth';
 import {handleError} from './errors';
+import type {EmbeddingModelBuilder} from './embeddings/embedder';
+import {createEmbedderFactory} from './embeddings/embedder';
 import type {ModelBuilder} from './engine/factory';
 import {createEngineFactory} from './engine/factory';
 import type {SignedInEnv} from './middleware/require-user';
@@ -11,6 +13,8 @@ import {requireUser} from './middleware/require-user';
 import {agentTemplatesRoutes} from './routes/agent-templates';
 import {agentsRoutes} from './routes/agents';
 import {keysRoutes} from './routes/keys';
+import {knowledgeRoutes} from './routes/knowledge';
+import {memoriesRoutes} from './routes/memories';
 import {playgroundRoutes} from './routes/playground';
 import {appsRoutes} from './routes/apps';
 import {integrationsRoutes} from './routes/integrations';
@@ -35,6 +39,8 @@ import {createRoutineExecutor} from './routines/run-routine';
 import {RoutineService} from './routines/service';
 import {builtInTools as defaultBuiltInTools} from './tools/built-in';
 import type {ComposioGateway} from './tools/composio';
+import type {PageFetcher} from './knowledge/library';
+import {createPageFetcher} from './tools/safe-fetch';
 import type {BinaryTool} from './tools/toolbox';
 import type {Vault} from './vault';
 
@@ -46,6 +52,10 @@ export interface AppOptions {
   /** Web pages and app schemes allowed to call the API. */
   trustedOrigins: string[];
   buildModel?: ModelBuilder;
+  /** Embedding models for memory and knowledge. Tests pass a fake. */
+  buildEmbeddingModel?: EmbeddingModelBuilder;
+  /** Fetches web pages for Knowledge. Tests pass one that reaches them. */
+  fetchPage?: PageFetcher;
   /** The built-in tools. Tests pass ones with a fixed clock. */
   builtInTools?: () => BinaryTool[];
   /** Composio, or null when it's off. Tests pass a fake. */
@@ -79,6 +89,8 @@ export function createApp({
   vault,
   trustedOrigins,
   buildModel,
+  buildEmbeddingModel,
+  fetchPage = createPageFetcher(),
   builtInTools = defaultBuiltInTools,
   composio = null,
   webUrl = 'http://localhost:3000',
@@ -99,6 +111,7 @@ export function createApp({
   const desktops = new DesktopManager(db, desktopProvider);
   const runners = new RunnerAccess(db, runnerHub);
   const computers = new Computers(db, sandboxes, browsers, desktops);
+  const embedders = createEmbedderFactory({db, vault, buildEmbeddingModel});
   const jobs =
     jobRunner ??
     new InProcessRunner(
@@ -113,6 +126,7 @@ export function createApp({
         browsers,
         desktops,
         runners,
+        buildEmbeddingModel,
       }),
     );
   const routines = new RoutineService(db, jobs);
@@ -138,6 +152,8 @@ export function createApp({
   signedIn.route('/keys', keysRoutes({db, vault}));
   signedIn.route('/playground', playgroundRoutes(engineFor));
   signedIn.route('/agents', agentsRoutes(db));
+  signedIn.route('/agents', memoriesRoutes({db, embedders}));
+  signedIn.route('/knowledge', knowledgeRoutes({db, embedders, fetchPage}));
   signedIn.route('/agent-templates', agentTemplatesRoutes(db));
   signedIn.route('/apps', appsRoutes({db, vault, builtInTools}));
   signedIn.route(
@@ -153,6 +169,7 @@ export function createApp({
       desktops,
       runners,
       computers,
+      embedders,
     }),
   );
   signedIn.route('/integrations', integrationsRoutes({db, composio, webUrl}));
@@ -170,6 +187,7 @@ export function createApp({
       browsers,
       desktops,
       runners,
+      embedders,
     }),
   );
   signedIn.route('/runners', runnersRoutes({db, hub: runnerHub}));

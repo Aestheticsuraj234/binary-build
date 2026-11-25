@@ -20,6 +20,7 @@ import {Hono} from 'hono';
 
 import {generateAnswer} from '../chat/answer';
 import {modelTurns} from '../chat/history';
+import type {EmbedderFactory} from '../embeddings/embedder';
 import type {EngineFactory} from '../engine/factory';
 import type {SignedInEnv} from '../middleware/require-user';
 import {
@@ -52,6 +53,7 @@ interface ThreadsRouteOptions {
   desktops: DesktopManager;
   runners: RunnerAccess;
   computers: Computers;
+  embedders: EmbedderFactory;
 }
 
 export function toThreadSummary(
@@ -93,6 +95,7 @@ export function threadsRoutes({
   desktops,
   runners,
   computers,
+  embedders,
 }: ThreadsRouteOptions) {
   const threads = new ThreadRepository(db);
   const agents = new AgentRepository(db);
@@ -200,6 +203,7 @@ export function threadsRoutes({
           browsers,
           desktops,
           runners,
+          embedders,
         },
         {engine, agent, userId, threadId: thread.id, prompt: message, history},
         send,

@@ -8,3 +8,4 @@ export * from './provider-keys';
 export * from './routines';
 export * from './runners';
 export * from './sandboxes';
+export * from './memory';

@@ -9,3 +9,5 @@ export * from './routine-run-repository';
 export * from './approval-repository';
 export * from './sandbox-repository';
 export * from './runner-repository';
+export * from './memory-repository';
+export * from './knowledge-repository';

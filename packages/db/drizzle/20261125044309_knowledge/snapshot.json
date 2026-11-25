@@ -1,0 +1,973 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "04e6cc54-43ba-477e-949c-5748fcb1e08a",
+  "prevIds": [
+    "208f7849-9782-4fd0-ad9f-6ce28f737e19"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "knowledge_chunks"
+      ],
+      "writes": [
+        "s|tbl|public.knowledge_chunks",
+        "n|tbl|public.knowledge_chunks",
+        "e|tbl|public.knowledge_chunks",
+        "n|rel|public.knowledge_chunks",
+        "n|type|public.knowledge_chunks",
+        "n|rel|public.knowledge_chunks_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "knowledge_documents"
+      ],
+      "writes": [
+        "s|tbl|public.knowledge_documents",
+        "n|tbl|public.knowledge_documents",
+        "e|tbl|public.knowledge_documents",
+        "n|rel|public.knowledge_documents",
+        "n|type|public.knowledge_documents",
+        "n|rel|public.knowledge_documents_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "memories"
+      ],
+      "writes": [
+        "s|tbl|public.memories",
+        "n|tbl|public.memories",
+        "e|tbl|public.memories",
+        "n|rel|public.memories",
+        "n|type|public.memories",
+        "n|rel|public.memories_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "knowledge_chunks",
+        "knowledge_chunks_document_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.knowledge_chunks_document_id_idx",
+        "n|idx|public.knowledge_chunks_document_id_idx",
+        "e|idx|public.knowledge_chunks_document_id_idx",
+        "n|rel|public.knowledge_chunks_document_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_chunks",
+        "n|sch|public",
+        "n|col|public.knowledge_chunks.document_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "knowledge_chunks",
+        "knowledge_chunks_user_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.knowledge_chunks_user_id_idx",
+        "n|idx|public.knowledge_chunks_user_id_idx",
+        "e|idx|public.knowledge_chunks_user_id_idx",
+        "n|rel|public.knowledge_chunks_user_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_chunks",
+        "n|sch|public",
+        "n|col|public.knowledge_chunks.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "knowledge_chunks",
+        "knowledge_chunks_embedding_idx"
+      ],
+      "writes": [
+        "s|idx|public.knowledge_chunks_embedding_idx",
+        "n|idx|public.knowledge_chunks_embedding_idx",
+        "e|idx|public.knowledge_chunks_embedding_idx",
+        "n|rel|public.knowledge_chunks_embedding_idx"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_chunks",
+        "n|sch|public",
+        "n|col|public.knowledge_chunks.embedding"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "knowledge_documents",
+        "knowledge_documents_user_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.knowledge_documents_user_id_idx",
+        "n|idx|public.knowledge_documents_user_id_idx",
+        "e|idx|public.knowledge_documents_user_id_idx",
+        "n|rel|public.knowledge_documents_user_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_documents",
+        "n|sch|public",
+        "n|col|public.knowledge_documents.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "memories",
+        "memories_agent_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.memories_agent_id_idx",
+        "n|idx|public.memories_agent_id_idx",
+        "e|idx|public.memories_agent_id_idx",
+        "n|rel|public.memories_agent_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.memories",
+        "n|sch|public",
+        "n|col|public.memories.agent_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "memories",
+        "memories_embedding_idx"
+      ],
+      "writes": [
+        "s|idx|public.memories_embedding_idx",
+        "n|idx|public.memories_embedding_idx",
+        "e|idx|public.memories_embedding_idx",
+        "n|rel|public.memories_embedding_idx"
+      ],
+      "reads": [
+        "n|tbl|public.memories",
+        "n|sch|public",
+        "n|col|public.memories.embedding"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "knowledge_chunks"
+      ],
+      "writes": [
+        "s|fk|public.knowledge_chunks.knowledge_chunks_document_id_knowledge_documents_id_fkey",
+        "n|fk|public.knowledge_chunks.knowledge_chunks_document_id_knowledge_documents_id_fkey",
+        "e|fk|public.knowledge_chunks.knowledge_chunks_document_id_knowledge_documents_id_fkey",
+        "n|con|public.knowledge_chunks.knowledge_chunks_document_id_knowledge_documents_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_chunks",
+        "n|sch|public",
+        "n|tbl|public.knowledge_documents",
+        "n|sch|public",
+        "n|col|public.knowledge_chunks.document_id",
+        "n|col|public.knowledge_documents.id",
+        "e|uniqueness|public.knowledge_documents.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "knowledge_chunks"
+      ],
+      "writes": [
+        "s|fk|public.knowledge_chunks.knowledge_chunks_user_id_user_id_fkey",
+        "n|fk|public.knowledge_chunks.knowledge_chunks_user_id_user_id_fkey",
+        "e|fk|public.knowledge_chunks.knowledge_chunks_user_id_user_id_fkey",
+        "n|con|public.knowledge_chunks.knowledge_chunks_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_chunks",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.knowledge_chunks.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "knowledge_documents"
+      ],
+      "writes": [
+        "s|fk|public.knowledge_documents.knowledge_documents_user_id_user_id_fkey",
+        "n|fk|public.knowledge_documents.knowledge_documents_user_id_user_id_fkey",
+        "e|fk|public.knowledge_documents.knowledge_documents_user_id_user_id_fkey",
+        "n|con|public.knowledge_documents.knowledge_documents_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.knowledge_documents",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.knowledge_documents.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "memories"
+      ],
+      "writes": [
+        "s|fk|public.memories.memories_user_id_user_id_fkey",
+        "n|fk|public.memories.memories_user_id_user_id_fkey",
+        "e|fk|public.memories.memories_user_id_user_id_fkey",
+        "n|con|public.memories.memories_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.memories",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.memories.user_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "memories"
+      ],
+      "writes": [
+        "s|fk|public.memories.memories_agent_id_agents_id_fkey",
+        "n|fk|public.memories.memories_agent_id_agents_id_fkey",
+        "e|fk|public.memories.memories_agent_id_agents_id_fkey",
+        "n|con|public.memories.memories_agent_id_agents_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.memories",
+        "n|sch|public",
+        "n|tbl|public.agents",
+        "n|sch|public",
+        "n|col|public.memories.agent_id",
+        "n|col|public.agents.id",
+        "e|uniqueness|public.agents.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "knowledge_chunks",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "knowledge_documents",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "memories",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "document_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "position",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "content",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "embedding",
+        "type": "vector(1536)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "embedding_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "title",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "url",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "characters",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "user_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "agent_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "content",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "embedding",
+        "type": "vector(1536)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "embedding_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_document_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "document_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_embedding_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "embedding",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": {
+              "name": "vector_cosine_ops",
+              "default": false
+            }
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "hnsw",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "knowledge_documents_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "memories_agent_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "agent_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "memories_embedding_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "embedding",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": {
+              "name": "vector_cosine_ops",
+              "default": false
+            }
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "hnsw",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_document_id_knowledge_documents_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "document_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "knowledge_documents",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "knowledge_documents_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "memories_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "memories_agent_id_agents_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "agent_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "agents",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_chunks",
+        "name": "knowledge_chunks_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "knowledge_documents",
+        "name": "knowledge_documents_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "memories",
+        "name": "memories_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

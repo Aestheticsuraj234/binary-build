@@ -86,6 +86,14 @@ export default function RootLayout() {
             name="agents/[id]/edit"
             options={{...INNER_SCREEN, title: 'Edit'}}
           />
+          <Stack.Screen
+            name="agents/[id]/memory"
+            options={{...INNER_SCREEN, title: 'Memory'}}
+          />
+          <Stack.Screen
+            name="knowledge"
+            options={{...INNER_SCREEN, title: 'Knowledge'}}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!isSignedIn}>
           <Stack.Screen name="sign-in" />

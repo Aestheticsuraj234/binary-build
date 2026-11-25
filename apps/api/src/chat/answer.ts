@@ -1,12 +1,20 @@
 import {randomUUID} from 'node:crypto';
 
 import type {AgentRow, Database, PendingApproval} from '@binary/db';
+import {KnowledgeRepository} from '@binary/db';
 import type {ChatTurn, ToolCallRecord} from '@binary/shared';
-import {decideTool, getProvider} from '@binary/shared';
+import {getProvider} from '@binary/shared';
 
-import type {RunContext} from '../agents/system-prompt';
+import type {
+  KnowledgeContext,
+  MemoryContext,
+  RunContext,
+} from '../agents/system-prompt';
 import {buildSystemPrompt} from '../agents/system-prompt';
+import type {Embedder, EmbedderFactory} from '../embeddings/embedder';
 import type {Engine} from '../engine/engine';
+import {memoriesForPrompt} from '../memory/memories';
+import {knowledgeTool, memoryTools} from '../memory/tools';
 import {engineErrorMessage} from '../routes/stream-answer';
 import type {BrowserManager} from '../browser/manager';
 import {browserTools} from '../browser/tools';
@@ -34,6 +42,9 @@ const NO_TOOLS: UserToolbox = {
   close: async () => {},
 };
 
+/** How many document titles the system prompt lists. */
+export const KNOWLEDGE_TITLES_IN_PROMPT = 20;
+
 /** What the person sees on a tool call that waits for their OK. */
 export const WAITING_FOR_PERSON = 'Needs your OK before it runs.';
 
@@ -51,6 +62,57 @@ export interface AnswerDeps {
   desktops: DesktopManager;
   /** Your computers, through their Runners. */
   runners: RunnerAccess;
+  /** Embeddings for memory and knowledge; off without an OpenAI/Google key. */
+  embedders: EmbedderFactory;
+}
+
+/** Memory and knowledge for one answer, or nothing when they're off. */
+async function loadRecall(
+  db: Database,
+  embedders: EmbedderFactory,
+  {
+    userId,
+    agentId,
+    prompt,
+    withTools,
+  }: {userId: string; agentId: string; prompt: string; withTools: boolean},
+): Promise<{
+  embedder: Embedder | null;
+  memory?: MemoryContext;
+  knowledge?: KnowledgeContext;
+}> {
+  try {
+    const choice = await embedders(userId);
+    if (!choice.ok) {
+      return {embedder: null};
+    }
+    const {embedder} = choice;
+    const [{memories, total}, knowledge] = await Promise.all([
+      memoriesForPrompt(db, embedder, {userId, agentId, prompt}),
+      withTools
+        ? new KnowledgeRepository(db).titlesForUser(
+            userId,
+            KNOWLEDGE_TITLES_IN_PROMPT,
+          )
+        : undefined,
+    ]);
+    return {
+      embedder,
+      memory: {
+        memories: memories.map(m => ({id: m.id, content: m.content})),
+        total,
+        tools: withTools,
+      },
+      knowledge,
+    };
+  } catch (error) {
+    // Memory helps, but a chat never fails for want of it.
+    console.warn(
+      '[memory] left out of this answer:',
+      error instanceof Error ? error.message : error,
+    );
+    return {embedder: null};
+  }
 }
 
 export interface AnswerRequest {
@@ -104,6 +166,7 @@ export async function generateAnswer(
     browsers,
     desktops,
     runners,
+    embedders,
   }: AnswerDeps,
   {
     engine,
@@ -131,22 +194,36 @@ export async function generateAnswer(
   const runnerId = agent.computers.includes('runner') ? agent.runnerId : null;
   // Claude Code and Codex bring their own tools; Binary's aren't offered.
   const usesCli = agent.engine !== 'api';
-  const tools =
-    mode === 'plan_only' || usesCli
-      ? NO_TOOLS
-      : await loadUserToolbox(
-          db,
-          vault,
-          userId,
-          [
-            ...builtInTools(),
-            ...(hasSandbox ? sandboxTools(sandboxes, owner) : []),
-            ...(hasBrowser ? browserTools(browsers, owner) : []),
-            ...(hasDesktop ? desktopTools(desktops, owner) : []),
-            ...(runnerId ? runnerTools(runners, {userId, runnerId}) : []),
-          ],
-          composio,
-        );
+  const withTools = mode !== 'plan_only' && !usesCli;
+  // What it remembers goes into the prompt; knowledge is searched by tool.
+  const recall = await loadRecall(db, embedders, {
+    userId,
+    agentId: agent.id,
+    prompt,
+    withTools,
+  });
+  const {embedder} = recall;
+  const tools = !withTools
+    ? NO_TOOLS
+    : await loadUserToolbox(
+        db,
+        vault,
+        userId,
+        [
+          ...builtInTools(),
+          ...(hasSandbox ? sandboxTools(sandboxes, owner) : []),
+          ...(hasBrowser ? browserTools(browsers, owner) : []),
+          ...(hasDesktop ? desktopTools(desktops, owner) : []),
+          ...(runnerId ? runnerTools(runners, {userId, runnerId}) : []),
+          ...(embedder
+            ? memoryTools(db, embedder, {userId, agentId: agent.id})
+            : []),
+          ...(embedder && recall.knowledge && recall.knowledge.total > 0
+            ? [knowledgeTool(db, embedder, userId)]
+            : []),
+        ],
+        composio,
+      );
   const calls = new Map<string, ToolCallRecord>();
   const approvals: PendingApproval[] = [];
   const report = (call: ToolCallRecord) => {
@@ -171,6 +248,8 @@ export async function generateAnswer(
         desktop: wantsDesktop ? (hasDesktop ? 'on' : 'off') : undefined,
         runner: runnerId !== null && !usesCli,
         cli: usesCli,
+        memory: recall.memory,
+        knowledge: recall.knowledge,
       }),
       tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,
@@ -191,7 +270,7 @@ export async function generateAnswer(
       } else if (part.type === 'tool-call') {
         const found = tools.toolbox.find(part.name);
         const risk = tools.toolbox.riskOf(part.name);
-        if (found && decideTool(mode, risk) === 'ask') {
+        if (found && tools.toolbox.decide(part.name, mode) === 'ask') {
           // Saved as a request with the answer. Nothing runs until the
           // person approves, and then exactly this tool and input run.
           const approvalId = randomUUID();

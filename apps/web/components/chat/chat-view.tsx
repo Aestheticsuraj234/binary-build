@@ -14,6 +14,7 @@ import {characterOf, CHAT_MESSAGE_MAX_LENGTH, readEvents} from '@binary/shared';
 import {cn} from 'cn';
 import {
   ArrowUpIcon,
+  BrainIcon,
   EyeIcon,
   PencilIcon,
   PlusIcon,
@@ -440,6 +441,13 @@ export function ChatView({
               >
                 <PencilIcon aria-hidden />
                 Edit
+              </Link>
+              <Link
+                href={`/agents/${agent.id}/memory`}
+                className={buttonVariants({variant: 'secondary', size: 'sm'})}
+              >
+                <BrainIcon aria-hidden />
+                Memory
               </Link>
             </>
           )}

@@ -29,6 +29,7 @@ import type {RoutineExecutor} from '../src/routines/run-routine';
 import {createRoutineExecutor} from '../src/routines/run-routine';
 import {hashWebhookSecret} from '../src/routines/webhook-secret';
 import type {BinaryTool} from '../src/tools/toolbox';
+import {fakeEmbeddingBuilder} from './fake-embedder';
 import type {TestApp} from './helpers';
 import {
   callApi,
@@ -71,7 +72,13 @@ const local = createTestApp({
   buildModel,
   builtInTools,
   jobRunner: ({db, vault}) => {
-    execute = createRoutineExecutor({db, vault, buildModel, builtInTools});
+    execute = createRoutineExecutor({
+      db,
+      vault,
+      buildModel,
+      builtInTools,
+      buildEmbeddingModel: fakeEmbeddingBuilder(),
+    });
     runner = new InProcessRunner(db, execute);
     return runner;
   },

@@ -1,5 +1,10 @@
 import type {ToolSource} from '@binary/db';
-import type {ApprovalMode, ToolRisk, ToolSummary} from '@binary/shared';
+import type {
+  ApprovalMode,
+  ToolDecision,
+  ToolRisk,
+  ToolSummary,
+} from '@binary/shared';
 import {decideTool} from '@binary/shared';
 import type {FlexibleSchema, JSONValue, ToolSet} from 'ai';
 import {tool} from 'ai';
@@ -19,6 +24,12 @@ export interface BinaryTool {
    */
   source?: ToolSource;
   /**
+   * True for tools that only touch the person's own Binary records, which
+   * they can see and delete (memory and knowledge): these run without
+   * asking in every mode that has tools. Plan only still has none.
+   */
+  alwaysRuns?: boolean;
+  /**
    * Does the work. Throws an `Error` whose message is safe to show the
    * person and the model.
    */
@@ -28,6 +39,15 @@ export interface BinaryTool {
 /** Where a tool comes from; built-in tools are found by their name. */
 export function sourceOf(binaryTool: BinaryTool): ToolSource {
   return binaryTool.source ?? {kind: 'built-in', name: binaryTool.name};
+}
+
+/** Whether a tool runs, asks first or isn't offered, in one mode. */
+export function decideFor(
+  binaryTool: Pick<BinaryTool, 'risk' | 'alwaysRuns'>,
+  mode: ApprovalMode,
+): ToolDecision {
+  const decision = decideTool(mode, binaryTool.risk);
+  return binaryTool.alwaysRuns && decision === 'ask' ? 'run' : decision;
 }
 
 /** What the model reads when a tool needs the person's OK. */
@@ -89,6 +109,12 @@ export class Toolbox {
     return this.byName.get(name)?.risk ?? 'write';
   }
 
+  /** Whether the tool called `name` runs, asks or isn't offered. */
+  decide(name: string, mode: ApprovalMode): ToolDecision {
+    const found = this.byName.get(name);
+    return found ? decideFor(found, mode) : decideTool(mode, 'write');
+  }
+
   summaries(): ToolSummary[] {
     return [...this.byName.values()].map(toSummary);
   }
@@ -97,7 +123,7 @@ export class Toolbox {
   toToolSet(mode: ApprovalMode): ToolSet {
     const set: ToolSet = {};
     for (const binaryTool of this.byName.values()) {
-      const decision = decideTool(mode, binaryTool.risk);
+      const decision = decideFor(binaryTool, mode);
       if (decision === 'never') {
         continue;
       }

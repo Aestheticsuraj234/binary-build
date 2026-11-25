@@ -388,6 +388,10 @@ export function Chat({
               text: 'Edit agent',
               onPress: () => router.push(`/agents/${agent.id}/edit`),
             },
+            {
+              text: 'Memory',
+              onPress: () => router.push(`/agents/${agent.id}/memory`),
+            },
           ]),
       ...(threadId
         ? [

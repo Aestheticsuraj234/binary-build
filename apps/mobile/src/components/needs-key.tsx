@@ -6,14 +6,20 @@ import {Button} from '@/components/button';
 import {CharacterFace} from '@/components/character-face';
 
 /** Pebble asks for an API key, because agents need one to think. */
-export function NeedsKey({message}: {message: string}) {
+export function NeedsKey({
+  message,
+  title = 'Add an API key first',
+}: {
+  message: string;
+  title?: string;
+}) {
   const router = useRouter();
   return (
     <View style={styles.card}>
       <View style={styles.row}>
         <CharacterFace character="pebble" mood="thinking" size={72} />
         <View style={styles.text}>
-          <Text style={styles.title}>Add an API key first</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
         </View>
       </View>

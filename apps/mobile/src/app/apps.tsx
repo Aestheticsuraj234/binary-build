@@ -323,6 +323,29 @@ function ComputersSection() {
   );
 }
 
+/** A link to the Knowledge screen. */
+function KnowledgeLink() {
+  const router = useRouter();
+  return (
+    <>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
+        Your documents
+      </Text>
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => router.push('/knowledge')}
+        style={({pressed}) => [styles.card, pressed && styles.cardPressed]}
+      >
+        <Text style={styles.cardTitle}>Knowledge →</Text>
+        <Text style={styles.muted}>
+          Add handbooks, notes and web pages that every character can search and
+          cite.
+        </Text>
+      </Pressable>
+    </>
+  );
+}
+
 /** A link to the Integrations screen. */
 function IntegrationsLink() {
   const router = useRouter();
@@ -406,6 +429,7 @@ export default function AppsScreen() {
           </>
         )}
         <ComputersSection />
+        <KnowledgeLink />
         <IntegrationsLink />
       </ScrollView>
     </KeyboardAvoidingView>

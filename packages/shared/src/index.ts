@@ -13,3 +13,4 @@ export * from './read-events';
 export * from './routines';
 export * from './runners';
 export * from './validate';
+export * from './memory';

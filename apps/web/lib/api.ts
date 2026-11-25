@@ -4,6 +4,8 @@ import type {
   AgentSummary,
   AgentTemplateSummary,
   IntegrationsCatalog,
+  KnowledgeOverview,
+  MemoriesOverview,
   ProviderKeyStatus,
   RoutineDetail,
   RunnerSummary,
@@ -148,4 +150,23 @@ export const fetchComputers = cache(async (): Promise<ComputersOverview> => {
 export const fetchRunners = cache(async (): Promise<RunnerSummary[]> => {
   const body = await apiGet<{runners: RunnerSummary[]}>('/api/runners');
   return body?.runners ?? [];
+});
+
+/** A character's memories, or null if the character isn't theirs. */
+export const fetchMemories = cache(
+  async (agentId: string): Promise<MemoriesOverview | null> =>
+    apiGet<MemoriesOverview>(
+      `/api/agents/${encodeURIComponent(agentId)}/memories`,
+    ),
+);
+
+/** The person's knowledge library, and whether it's on. */
+export const fetchKnowledge = cache(async (): Promise<KnowledgeOverview> => {
+  const body = await apiGet<KnowledgeOverview>('/api/knowledge');
+  return (
+    body ?? {
+      status: {available: false, message: 'Knowledge could not be loaded.'},
+      documents: [],
+    }
+  );
 });
