@@ -30,6 +30,7 @@ import {RunnerHub} from './runners/hub';
 import {computersRoutes, imagesRoutes} from './routes/computers';
 import {SandboxManager} from './sandbox/manager';
 import type {SandboxProvider} from './sandbox/provider';
+import {roomsRoutes} from './routes/rooms';
 import {routinesRoutes} from './routes/routines';
 import {settingsRoutes} from './routes/settings';
 import {threadsRoutes} from './routes/threads';
@@ -188,6 +189,22 @@ export function createApp({
       desktops,
       runners,
       embedders,
+    }),
+  );
+  signedIn.route(
+    '/rooms',
+    roomsRoutes({
+      db,
+      vault,
+      engineFor,
+      builtInTools,
+      composio,
+      sandboxes,
+      browsers,
+      desktops,
+      runners,
+      embedders,
+      computers,
     }),
   );
   signedIn.route('/runners', runnersRoutes({db, hub: runnerHub}));

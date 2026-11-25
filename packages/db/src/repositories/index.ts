@@ -11,3 +11,4 @@ export * from './sandbox-repository';
 export * from './runner-repository';
 export * from './memory-repository';
 export * from './knowledge-repository';
+export * from './room-repository';

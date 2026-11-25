@@ -14,3 +14,4 @@ export * from './routines';
 export * from './runners';
 export * from './validate';
 export * from './memory';
+export * from './rooms';

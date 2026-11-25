@@ -12,6 +12,7 @@ import {
   LaptopIcon,
   PlugIcon,
   Repeat2Icon,
+  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
@@ -29,6 +30,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {href: '/today', label: 'Today', icon: InboxIcon},
   {href: '/', label: 'Discover', icon: CompassIcon},
+  {href: '/rooms', label: 'Rooms', icon: UsersIcon},
   {href: '/routines', label: 'Routines', icon: Repeat2Icon},
   {href: '/knowledge', label: 'Knowledge', icon: BookOpenIcon},
   {href: '/apps', label: 'Apps & tools', icon: PlugIcon},

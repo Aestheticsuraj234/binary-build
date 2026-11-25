@@ -34,6 +34,8 @@ export type PlaygroundEvent =
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'note';
+  /** In a room: which character wrote an answer, or whose note it is. */
+  agentId?: string | null;
   content: string;
   /** Tools the agent used while answering, in order. */
   toolCalls: ToolCallRecord[];

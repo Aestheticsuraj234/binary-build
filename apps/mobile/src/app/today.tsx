@@ -79,6 +79,7 @@ function ApprovalCard({
             <Text style={styles.small}>
               {formatRunDate(approval.createdAt, null)}
               {approval.routineName ? ` · ${approval.routineName}` : ''}
+              {approval.room ? ` · ${approval.room.name}` : ''}
             </Text>
           </View>
         </View>
@@ -96,9 +97,17 @@ function ApprovalCard({
       />
       <Pressable
         accessibilityRole="link"
-        onPress={() => router.push(`/chats/${approval.threadId}`)}
+        onPress={() =>
+          router.push(
+            approval.room
+              ? `/rooms/${approval.room.id}`
+              : `/chats/${approval.threadId}`,
+          )
+        }
       >
-        <Text style={styles.link}>Open the chat →</Text>
+        <Text style={styles.link}>
+          {approval.room ? 'Open the room →' : 'Open the chat →'}
+        </Text>
       </Pressable>
     </View>
   );

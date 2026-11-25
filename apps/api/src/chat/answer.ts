@@ -8,6 +8,7 @@ import {getProvider} from '@binary/shared';
 import type {
   KnowledgeContext,
   MemoryContext,
+  RoomContext,
   RunContext,
 } from '../agents/system-prompt';
 import {buildSystemPrompt} from '../agents/system-prompt';
@@ -129,6 +130,8 @@ export interface AnswerRequest {
   history: ChatTurn[];
   /** Set for routine runs, which nobody watches live. */
   run?: RunContext;
+  /** Set when it answers in a room. */
+  room?: RoomContext;
 }
 
 /** Live progress while the answer is written. */
@@ -177,6 +180,7 @@ export async function generateAnswer(
     promptImages,
     history,
     run,
+    room,
   }: AnswerRequest,
   onProgress: (progress: AnswerProgress) => void = () => {},
 ): Promise<AnswerOutcome> {
@@ -250,6 +254,7 @@ export async function generateAnswer(
         cli: usesCli,
         memory: recall.memory,
         knowledge: recall.knowledge,
+        room,
       }),
       tools: tools.toolbox.toToolSet(mode),
       maxSteps: MAX_STEPS,

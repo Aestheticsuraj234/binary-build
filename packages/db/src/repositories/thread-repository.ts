@@ -1,4 +1,4 @@
-import {and, asc, desc, eq, isNotNull, sql} from 'drizzle-orm';
+import {and, asc, desc, eq, isNotNull, isNull, sql} from 'drizzle-orm';
 
 import type {Database} from '../index';
 import type {AgentRow} from '../schema/agents';
@@ -39,7 +39,8 @@ export class ThreadRepository {
 
   /**
    * This person's chats, newest first. Threads with no messages yet are
-   * left out, so an abandoned "New chat" doesn't clutter the list.
+   * left out, so an abandoned "New chat" doesn't clutter the list, and so
+   * are rooms' conversations, which live on the Rooms page.
    */
   listForUser(userId: string, limit = 50): Promise<ThreadListItem[]> {
     return this.db
@@ -49,7 +50,13 @@ export class ThreadRepository {
       })
       .from(threads)
       .innerJoin(agents, eq(agents.id, threads.agentId))
-      .where(and(eq(threads.userId, userId), isNotNull(threads.title)))
+      .where(
+        and(
+          eq(threads.userId, userId),
+          isNotNull(threads.title),
+          isNull(threads.roomId),
+        ),
+      )
       .orderBy(desc(threads.updatedAt))
       .limit(limit);
   }
@@ -122,20 +129,35 @@ export class ThreadRepository {
     });
   }
 
+  /** Saves a note from Binary, e.g. that a room's character couldn't answer. */
+  async addNote(
+    threadId: string,
+    content: string,
+    agentId: string | null = null,
+  ): Promise<MessageRow> {
+    const [row] = await this.db
+      .insert(messages)
+      .values({threadId, role: 'note', content, agentId})
+      .returning();
+    return row!;
+  }
+
   /**
    * Saves a complete answer from the agent, with the tools it used and
-   * any approval requests it made, all or nothing.
+   * any approval requests it made, all or nothing. In a room, `agentId`
+   * says who answered.
    */
   addAnswer(
     threadId: string,
     content: string,
     toolCalls: unknown[] = [],
     approvals: PendingApproval[] = [],
+    agentId: string | null = null,
   ): Promise<MessageRow> {
     return this.db.transaction(async tx => {
       const [row] = await tx
         .insert(messages)
-        .values({threadId, role: 'assistant', content, toolCalls})
+        .values({threadId, role: 'assistant', content, toolCalls, agentId})
         .returning();
       if (approvals.length > 0) {
         await tx.insert(approvalRequests).values(

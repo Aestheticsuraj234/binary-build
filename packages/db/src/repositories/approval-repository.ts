@@ -8,6 +8,7 @@ import {approvalRequests} from '../schema/approvals';
 import type {MessageRow} from '../schema/chats';
 import {messages, threads} from '../schema/chats';
 import type {RoutineRunRow} from '../schema/routines';
+import {rooms} from '../schema/rooms';
 import {routineRuns, routines} from '../schema/routines';
 
 /** A request with what Today and the chat show beside it. */
@@ -16,6 +17,8 @@ export interface ApprovalListItem {
   agent: Pick<AgentRow, 'id' | 'name' | 'avatar'>;
   threadTitle: string | null;
   routineName: string | null;
+  /** Set when it was asked in a room. */
+  room: {id: string; name: string} | null;
 }
 
 /** A routine run with its routine, for Today. */
@@ -27,6 +30,21 @@ export interface RecentRunItem {
 
 /** What a decision changes to. */
 export type Decision = 'running' | 'rejected';
+
+/** A list row, with the room's two columns folded into `room`. */
+function toListItem({
+  roomId,
+  roomName,
+  ...item
+}: Omit<ApprovalListItem, 'room'> & {
+  roomId: string | null;
+  roomName: string | null;
+}): ApprovalListItem {
+  return {
+    ...item,
+    room: roomId && roomName ? {id: roomId, name: roomName} : null,
+  };
+}
 
 /**
  * Queries for `approval_requests`. Every method that takes a user id only
@@ -44,17 +62,20 @@ export class ApprovalRepository {
         agent: {id: agents.id, name: agents.name, avatar: agents.avatar},
         threadTitle: threads.title,
         routineName: routines.name,
+        roomId: rooms.id,
+        roomName: rooms.name,
       })
       .from(approvalRequests)
       .innerJoin(agents, eq(agents.id, approvalRequests.agentId))
       .innerJoin(threads, eq(threads.id, approvalRequests.threadId))
+      .leftJoin(rooms, eq(rooms.id, threads.roomId))
       .leftJoin(routineRuns, eq(routineRuns.id, approvalRequests.routineRunId))
       .leftJoin(routines, eq(routines.id, routineRuns.routineId));
   }
 
   /** Requests waiting for this person, newest first. */
-  listPendingForUser(userId: string): Promise<ApprovalListItem[]> {
-    return this.listQuery()
+  async listPendingForUser(userId: string): Promise<ApprovalListItem[]> {
+    const rows = await this.listQuery()
       .where(
         and(
           eq(approvalRequests.userId, userId),
@@ -62,6 +83,7 @@ export class ApprovalRepository {
         ),
       )
       .orderBy(desc(approvalRequests.createdAt));
+    return rows.map(toListItem);
   }
 
   async countPendingForUser(userId: string): Promise<number> {
@@ -87,7 +109,7 @@ export class ApprovalRepository {
         and(eq(approvalRequests.id, id), eq(approvalRequests.userId, userId)),
       )
       .limit(1);
-    return row;
+    return row && toListItem(row);
   }
 
   /**
@@ -177,16 +199,26 @@ export class ApprovalRepository {
     });
   }
 
-  /** Saves a note from Binary in a chat, about one tool call. */
+  /**
+   * Saves a note from Binary in a chat, about one tool call. In a room,
+   * `agentId` says whose call it was.
+   */
   addNote(
     threadId: string,
     content: string,
     toolCall: unknown,
+    agentId: string | null = null,
   ): Promise<MessageRow> {
     return this.db.transaction(async tx => {
       const [row] = await tx
         .insert(messages)
-        .values({threadId, role: 'note', content, toolCalls: [toolCall]})
+        .values({
+          threadId,
+          role: 'note',
+          content,
+          toolCalls: [toolCall],
+          agentId,
+        })
         .returning();
       await tx
         .update(threads)

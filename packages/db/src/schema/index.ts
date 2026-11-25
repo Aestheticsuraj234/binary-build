@@ -5,6 +5,7 @@ export * from './auth';
 export * from './chats';
 export * from './enabled-toolkits';
 export * from './provider-keys';
+export * from './rooms';
 export * from './routines';
 export * from './runners';
 export * from './sandboxes';

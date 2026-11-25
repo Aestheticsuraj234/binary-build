@@ -17,7 +17,9 @@ that opens public pages and asks before clicking (chapter 10), and the
 Runner: characters work on your own computer, think with Claude Code or
 Codex, or use a cloud desktop you can watch live (chapter 11), and memory
 and knowledge: each character remembers lasting facts about you, and all of
-them search a library of your own documents and cite it (chapter 12).
+them search a library of your own documents and cite it (chapter 12), and
+rooms: group chats where a small team of your characters answer in turn
+and hand work to each other (chapter 13).
 
 ## What's inside
 
@@ -394,6 +396,40 @@ they fit one `vector(1536)` column (`apps/api/src/embeddings/embedder.ts`).
   except Plan only (which has no tools, but still gets its memories).
 - **Tests stay offline**: `apps/api/test/fake-embedder.ts` turns words into
   vectors with a hash, so text that shares words lands close.
+
+## How rooms work
+
+A **room** (`apps/api/src/rooms/`) is a group chat with 2 to 6 of your
+characters and a **lead**. Its one conversation is an ordinary thread with
+`room_id` set (the chapter 13 migration adds `rooms`, `room_members`,
+`threads.room_id` and `messages.agent_id`, which says who answered), so
+approvals, charts and computers work as in any chat. Rooms stay out of
+Recent chats; deleting one keeps its characters.
+
+- **Who answers.** `@Name` mentions (whole names, any case) always win, in
+  the order you wrote them. With none, an **@Mention** room's lead answers;
+  an **Automatic** room asks the lead's model who should
+  (`rooms/router.ts`), and falls back to the lead if it can't tell or
+  thinks with a coding CLI.
+- **In turn.** Characters answer one after another. Each reads the room's
+  history with its own answers as its own and everyone else's labelled,
+  like `[Nova]: …`, and its system prompt says who else is here, who leads
+  and to answer only its part.
+- **Hand-offs.** An `@Name` inside an answer queues that teammate, who is
+  told who handed over. One message gets at most **4** answers
+  (`ROOM_MAX_ANSWERS`), so two characters can't hand back and forth forever.
+- **Still themselves.** Every turn goes through the same `generateAnswer`
+  as a chat, with that character's model, memory, tools and approval mode,
+  so a room can mix Claude and GPT. The room's sandbox, browser and desktop
+  are shared, so one can write a file and the next run it. A request for
+  your OK lands in Today with the room's name, and the character that
+  asked follows up in the room.
+- **One failure isn't fatal.** A character that can't answer (no key, its
+  provider down) leaves a note, like "Bolt couldn't answer: …", and the
+  next turn runs.
+- `POST /api/rooms/:id/messages` streams newline-delimited JSON: `start`,
+  `routed`, then per turn `turn`, `delta`/`tool` and `answer` (or
+  `turn-error`), `handoff` when an answer mentions a teammate, and `end`.
 
 ## How cloud sandboxes work
 

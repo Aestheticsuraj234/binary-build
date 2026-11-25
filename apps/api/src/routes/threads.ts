@@ -74,6 +74,7 @@ export function toChatMessage(row: MessageRow): ChatMessage {
   return {
     id: row.id,
     role: row.role,
+    ...(row.agentId ? {agentId: row.agentId} : {}),
     content: row.content,
     toolCalls: row.toolCalls as ToolCallRecord[],
     createdAt: row.createdAt.toISOString(),
@@ -104,7 +105,8 @@ export function threadsRoutes({
   /** One of this person's threads from the URL, or a 404. */
   async function findThread(c: Context<SignedInEnv>) {
     const found = await threads.findForUser(idParam(c, 'chat'), c.var.user.id);
-    if (!found) {
+    // A room's conversation is reached through its room, never here.
+    if (!found || found.thread.roomId !== null) {
       throw new NotFoundError('chat');
     }
     return found;

@@ -6,6 +6,8 @@ import type {
   IntegrationsCatalog,
   KnowledgeOverview,
   MemoriesOverview,
+  RoomDetail,
+  RoomSummary,
   ProviderKeyStatus,
   RoutineDetail,
   RunnerSummary,
@@ -170,3 +172,14 @@ export const fetchKnowledge = cache(async (): Promise<KnowledgeOverview> => {
     }
   );
 });
+
+/** This person's rooms, most recently active first. */
+export const fetchRooms = cache(async (): Promise<RoomSummary[]> => {
+  const body = await apiGet<{rooms: RoomSummary[]}>('/api/rooms');
+  return body?.rooms ?? [];
+});
+
+/** One room with its conversation, or null if it isn't theirs. */
+export const fetchRoom = cache(async (id: string): Promise<RoomDetail | null> =>
+  apiGet<RoomDetail>(`/api/rooms/${encodeURIComponent(id)}`),
+);

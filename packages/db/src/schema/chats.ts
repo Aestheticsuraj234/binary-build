@@ -5,13 +5,18 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
 import {agents} from './agents';
 import {user} from './auth';
+import {rooms} from './rooms';
 
-/** One conversation with one agent. */
+/**
+ * One conversation with one agent, or a room's conversation (`roomId` set,
+ * `agentId` its lead).
+ */
 export const threads = pgTable(
   'threads',
   {
@@ -22,6 +27,8 @@ export const threads = pgTable(
     agentId: uuid('agent_id')
       .notNull()
       .references(() => agents.id, {onDelete: 'cascade'}),
+    /** Set for a room's one conversation. Deleting the room deletes it. */
+    roomId: uuid('room_id').references(() => rooms.id, {onDelete: 'cascade'}),
     /** Named after the first message; null until there is one. */
     title: text('title'),
     createdAt: timestamp('created_at', {withTimezone: true})
@@ -37,6 +44,7 @@ export const threads = pgTable(
       table.userId,
       table.updatedAt.desc(),
     ),
+    uniqueIndex('threads_room_id_idx').on(table.roomId),
   ],
 );
 
@@ -52,6 +60,13 @@ export const messages = pgTable(
       .notNull()
       .references(() => threads.id, {onDelete: 'cascade'}),
     role: text('role', {enum: ['user', 'assistant', 'note']}).notNull(),
+    /**
+     * Who wrote an answer (or a note about one) in a room. Null in a chat
+     * with one agent, where it's always the thread's agent.
+     */
+    agentId: uuid('agent_id').references(() => agents.id, {
+      onDelete: 'set null',
+    }),
     content: text('content').notNull(),
     /**
      * Tools the agent used while answering (a `ToolCallRecord[]`). A note

@@ -2,7 +2,7 @@
 
 import type {ApprovalSummary} from '@binary/shared';
 import {readableToolName} from '@binary/shared';
-import {MessageSquareIcon, Repeat2Icon} from 'lucide-react';
+import {MessageSquareIcon, Repeat2Icon, UsersIcon} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {useState} from 'react';
@@ -18,6 +18,16 @@ import {decideRequest} from '@/lib/approvals';
 interface Outcome {
   text: string;
   threadId: string;
+  /** Where it was asked: a chat, or a room. */
+  href: string;
+  where: 'chat' | 'room';
+}
+
+/** A request from a room opens the room; any other opens its chat. */
+function placeOf(approval: ApprovalSummary) {
+  return approval.room
+    ? {href: `/rooms/${approval.room.id}`, where: 'room' as const}
+    : {href: `/chats/${approval.threadId}`, where: 'chat' as const};
 }
 
 function ApprovalCard({
@@ -43,11 +53,12 @@ function ApprovalCard({
     const {decided} = result;
     onDecided({
       threadId: approval.threadId,
+      ...placeOf(approval),
       text:
         decided.approval.status === 'rejected'
           ? `You rejected ${tool}.`
           : decided.approval.status === 'done'
-            ? `You approved ${tool}. ${approval.agentName} replied in the chat.`
+            ? `You approved ${tool}. ${approval.agentName} replied in the ${approval.room ? 'room' : 'chat'}.`
             : `You approved ${tool}, but it failed: ${decided.call.error ?? 'unknown error'}`,
     });
     return undefined;
@@ -66,6 +77,12 @@ function ApprovalCard({
           <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <RiskBadge risk={approval.risk} />
             {formatRunDate(approval.createdAt, timeZone)}
+            {approval.room && (
+              <span className="inline-flex items-center gap-1">
+                <UsersIcon aria-hidden className="size-3" />
+                {approval.room.name}
+              </span>
+            )}
             {approval.routineName && (
               <span className="inline-flex items-center gap-1">
                 <Repeat2Icon aria-hidden className="size-3" />
@@ -75,11 +92,15 @@ function ApprovalCard({
           </p>
         </div>
         <Link
-          href={`/chats/${approval.threadId}`}
+          href={placeOf(approval).href}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          <MessageSquareIcon aria-hidden className="size-4" />
-          Chat
+          {approval.room ? (
+            <UsersIcon aria-hidden className="size-4" />
+          ) : (
+            <MessageSquareIcon aria-hidden className="size-4" />
+          )}
+          {approval.room ? 'Room' : 'Chat'}
         </Link>
       </div>
       <ToolInput name={approval.toolName} input={approval.input} />
@@ -112,10 +133,10 @@ export function WaitingList({
         >
           {outcome.text}{' '}
           <Link
-            href={`/chats/${outcome.threadId}`}
+            href={outcome.href}
             className="text-foreground underline underline-offset-2"
           >
-            Open the chat
+            Open the {outcome.where}
           </Link>
         </p>
       ))}

@@ -105,6 +105,8 @@ export interface ApprovalSummary {
   threadTitle: string | null;
   /** Set when a routine run asked, rather than a chat. */
   routineName: string | null;
+  /** Set when it was asked in a room: open the room, not a chat. */
+  room: {id: string; name: string} | null;
   /** Why it failed, safe to show. */
   error: string | null;
   /** ISO dates. */

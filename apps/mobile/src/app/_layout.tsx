@@ -94,6 +94,19 @@ export default function RootLayout() {
             name="knowledge"
             options={{...INNER_SCREEN, title: 'Knowledge'}}
           />
+          <Stack.Screen
+            name="rooms/index"
+            options={{...INNER_SCREEN, title: 'Rooms'}}
+          />
+          <Stack.Screen
+            name="rooms/new"
+            options={{...INNER_SCREEN, title: 'New room'}}
+          />
+          <Stack.Screen name="rooms/[id]/index" options={INNER_SCREEN} />
+          <Stack.Screen
+            name="rooms/[id]/edit"
+            options={{...INNER_SCREEN, title: 'Edit room'}}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!isSignedIn}>
           <Stack.Screen name="sign-in" />

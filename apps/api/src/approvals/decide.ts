@@ -4,7 +4,12 @@ import type {
   MessageRow,
   ToolSource,
 } from '@binary/db';
-import {AppRepository, ApprovalRepository, ThreadRepository} from '@binary/db';
+import {
+  AppRepository,
+  ApprovalRepository,
+  RoomRepository,
+  ThreadRepository,
+} from '@binary/db';
 import type {
   ApprovalDecided,
   ApprovalSummary,
@@ -28,6 +33,11 @@ import {browserTools} from '../browser/tools';
 import {desktopTools} from '../desktop/tools';
 import {engineForAgent} from '../engine/agent-engine';
 import {runnerTools} from '../runners/tools';
+import {
+  roomContextFor,
+  roomTurns,
+  withoutOwnLabel,
+} from '../rooms/conversation';
 import {keepImages} from '../sandbox/images';
 import {sandboxTools} from '../sandbox/tools';
 import {toBinaryTools} from '../tools/composio';
@@ -49,6 +59,7 @@ export function toApprovalSummary({
   agent,
   threadTitle,
   routineName,
+  room,
 }: ApprovalListItem): ApprovalSummary {
   return {
     id: approval.id,
@@ -62,6 +73,7 @@ export function toApprovalSummary({
     threadId: approval.threadId,
     threadTitle,
     routineName,
+    room,
     error: approval.error,
     createdAt: approval.createdAt.toISOString(),
     decidedAt: approval.decidedAt?.toISOString() ?? null,
@@ -230,14 +242,27 @@ async function followUp(
   threadId: string,
   note: MessageRow,
   /** A desktop's new screen, for the model to see. */
-  screen: Array<{mime: string; data: string}> = [],
+  screen: Array<{mime: string; data: string}>,
+  /** Who asked: in a room, that character follows up, not the lead. */
+  agentId: string,
 ): Promise<{reply: ChatMessage | null; replyError: string | null}> {
   const threads = new ThreadRepository(deps.db);
   const found = await threads.findForUser(threadId, userId);
   if (!found) {
     return {reply: null, replyError: 'This chat was deleted.'};
   }
-  const {agent} = found;
+  const room = found.thread.roomId
+    ? await new RoomRepository(deps.db).findForUser(found.thread.roomId, userId)
+    : undefined;
+  const agent = room
+    ? room.members.find(member => member.id === agentId)
+    : found.agent;
+  if (!agent) {
+    return {
+      reply: null,
+      replyError: "That character left the room, so it can't follow up.",
+    };
+  }
   if (agent.firedAt) {
     return {
       reply: null,
@@ -253,23 +278,40 @@ async function followUp(
   const recent = contextWindow(
     await threads.recentMessages(threadId, CHAT_CONTEXT_MESSAGES),
   ).filter(message => message.id !== note.id);
+  let prompt = noteForModel(note, {followUp: true});
+  let history = modelTurns(recent);
+  if (room) {
+    history = roomTurns(
+      recent,
+      agent,
+      new Map(room.members.map(member => [member.id, member.name])),
+    );
+    // Teammates may have spoken since: their turns lead into the note.
+    const last = history.at(-1);
+    if (last?.role === 'user') {
+      history = history.slice(0, -1);
+      prompt = `${last.content}\n\n${prompt}`;
+    }
+  }
   const outcome = await generateAnswer(deps, {
     engine,
     agent,
     userId,
     threadId,
-    prompt: noteForModel(note, {followUp: true}),
+    prompt,
     promptImages: screen,
-    history: modelTurns(recent),
+    history,
+    room: room ? roomContextFor(room, agent) : undefined,
   });
   if (!outcome.ok) {
     return {reply: null, replyError: outcome.error};
   }
   const saved = await threads.addAnswer(
     threadId,
-    outcome.text,
+    room ? withoutOwnLabel(outcome.text, agent.name) : outcome.text,
     outcome.toolCalls,
     outcome.approvals,
+    room ? agent.id : null,
   );
   return {reply: toChatMessage(saved), replyError: null};
 }
@@ -361,6 +403,7 @@ export async function decideApproval(
     final.threadId,
     noteForPerson(call),
     call,
+    found.room ? final.agentId : null,
   );
   const {reply, replyError} = await followUp(
     deps,
@@ -368,6 +411,7 @@ export async function decideApproval(
     final.threadId,
     note,
     screen,
+    final.agentId,
   );
   return {
     approval: toApprovalSummary({...found, approval: final}),

@@ -85,6 +85,13 @@ export default function DiscoverScreen() {
         <View style={styles.topActions}>
           <Pressable
             accessibilityRole="button"
+            onPress={() => router.push('/rooms')}
+            style={styles.topButton}
+          >
+            <Text style={styles.topButtonText}>Rooms</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             onPress={() => router.push('/routines')}
             style={styles.topButton}
           >
@@ -246,7 +253,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  topActions: {flexDirection: 'row', gap: spacing.xs},
+  // Wraps on narrow phones instead of running off the edge.
+  topActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    flexShrink: 1,
+    gap: spacing.xs,
+  },
   topButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

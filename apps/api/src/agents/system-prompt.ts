@@ -72,6 +72,44 @@ export interface KnowledgeContext {
   total: number;
 }
 
+/** The room a character is answering in, and who else is there. */
+export interface RoomContext {
+  name: string;
+  /** Everyone in the room, this character included, in the room's order. */
+  members: Array<{name: string; role: string; isLead: boolean}>;
+  /** This character's own name, as the room knows it. */
+  self: string;
+  /** The most answers one message gets. */
+  maxAnswers: number;
+}
+
+/** The room section of the system prompt. */
+function roomLines({name, members, self, maxAnswers}: RoomContext): string[] {
+  const others = members.filter(m => m.name !== self);
+  const isLead = members.some(m => m.name === self && m.isLead);
+  const example = others[0]?.name ?? 'Name';
+  return [
+    '',
+    `You're in a room called "${name}": a group chat with the person you ` +
+      'work for and these teammates, who are AI coworkers like you:',
+    ...others.map(m => `- ${m.name}${m.isLead ? ' (lead)' : ''}: ${m.role}`),
+    isLead
+      ? 'You lead this room: when nobody is mentioned you answer first, so ' +
+        'take the lead and hand parts to teammates when they fit better.'
+      : 'You answer when the person or a teammate mentions you, or when ' +
+        'the lead hands you something.',
+    "The person's messages have no label; a teammate's answer starts " +
+      `with their name in brackets, like [${example}]. Never start your own ` +
+      'answer with a label, and never write as a teammate.',
+    "Answer only your part: build on what's already been said instead of " +
+      'repeating it, and keep it short. To hand part of the task to a ' +
+      `teammate, @mention them by name (for example "@${example}, can you ` +
+      'take the design?") and say what you need. Only @mention someone ' +
+      `when you want them to answer now. One message gets at most ` +
+      `${maxAnswers} answers in all.`,
+  ];
+}
+
 /** How memories are used, for characters that can save them. */
 const MEMORY_RULES =
   'When the person tells you something lasting about themselves (a ' +
@@ -127,6 +165,7 @@ export function buildSystemPrompt(
     cli = false,
     memory,
     knowledge,
+    room,
   }: {
     unavailableApps?: string[];
     run?: RunContext;
@@ -144,6 +183,8 @@ export function buildSystemPrompt(
     memory?: MemoryContext;
     /** Set when it can search the person's knowledge library. */
     knowledge?: KnowledgeContext;
+    /** Set when it's answering in a room. */
+    room?: RoomContext;
   } = {},
 ): string {
   const character = characterOf(agent.avatar);
@@ -244,6 +285,9 @@ export function buildSystemPrompt(
       "You're running as a coding CLI on the person's computer, in their " +
         "shared folder. Binary's other tools aren't available to you here.",
     );
+  }
+  if (room) {
+    lines.push(...roomLines(room));
   }
   if (memory) {
     lines.push(...memoryLines(memory));
